@@ -1,0 +1,1052 @@
+/* Reset e Configurações Globais - Estilo Bancário */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary-color: #1a365d;
+    --secondary-color: #2d3748;
+    --accent-color: #4299e1;
+    --success-color: #38a169;
+    --warning-color: #d69e2e;
+    --danger-color: #e53e3e;
+    --info-color: #805ad5;
+    --light-color: #f7fafc;
+    --dark-color: #1a202c;
+    --gray-light: #e2e8f0;
+    --gray-medium: #a0aec0;
+    --gray-dark: #718096;
+    --sidebar-width: 280px;
+    --header-height: 80px;
+    --card-shadow: 0 2px 4px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.05);
+    --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    --border-radius: 10px;
+    --border-radius-sm: 6px;
+    --gradient-primary: linear-gradient(135deg, #1a365d 0%, #2d3748 100%);
+    --gradient-accent: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+    --gradient-success: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f8fafc;
+    min-height: 100vh;
+    color: #2d3748;
+    line-height: 1.5;
+    font-weight: 400;
+}
+
+.container {
+    display: flex;
+    min-height: 100vh;
+    background: #f8fafc;
+}
+
+/* Sidebar - Estilo Bancário */
+.sidebar {
+    width: var(--sidebar-width);
+    background: var(--gradient-primary);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    position: fixed;
+    height: 100vh;
+    transform: translateX(0);
+    transition: var(--transition);
+}
+
+.logo {
+    padding: 28px 25px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.logo i {
+    font-size: 30px;
+    color: white;
+    background: var(--accent-color);
+    width: 45px;
+    height: 45px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
+}
+
+.logo h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: linear-gradient(to right, white, #e2e8f0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.nav-menu {
+    flex: 1;
+    padding: 30px 0;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 16px 25px;
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    transition: var(--transition);
+    border-left: 4px solid transparent;
+    font-weight: 500;
+    margin: 5px 15px;
+    border-radius: 8px;
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+    transform: translateX(5px);
+}
+
+.nav-item.active {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border-left-color: var(--accent-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.nav-item i {
+    width: 20px;
+    text-align: center;
+    font-size: 1.1rem;
+}
+
+.nav-item span {
+    font-size: 0.95rem;
+}
+
+.user-info {
+    padding: 25px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: rgba(255, 255, 255, 0.03);
+    margin-top: auto;
+}
+
+.avatar {
+    width: 45px;
+    height: 45px;
+    background: linear-gradient(135deg, #4299e1, #3182ce);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    box-shadow: 0 4px 8px rgba(66, 153, 225, 0.2);
+}
+
+.user-details p {
+    margin: 3px 0;
+}
+
+.user-name {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.user-role {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 400;
+}
+
+/* Main Content - Estilo Bancário */
+.main-content {
+    flex: 1;
+    padding: 25px 35px;
+    margin-left: var(--sidebar-width);
+    transition: var(--transition);
+}
+
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 35px;
+    padding: 20px 0;
+    position: relative;
+}
+
+.main-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--gray-light), transparent);
+}
+
+.header-title h1 {
+    font-size: 1.9rem;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.header-title h1 i {
+    background: var(--gradient-accent);
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+    box-shadow: 0 4px 12px rgba(66, 153, 225, 0.2);
+}
+
+.subtitle {
+    color: var(--gray-dark);
+    margin-top: 8px;
+    font-size: 0.95rem;
+    font-weight: 400;
+    letter-spacing: 0.3px;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.date-filter {
+    background: white;
+    padding: 12px 20px;
+    border-radius: var(--border-radius);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    box-shadow: var(--card-shadow);
+    transition: var(--transition);
+    border: 1px solid var(--gray-light);
+    font-weight: 500;
+    color: var(--dark-color);
+}
+
+.date-filter:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    border-color: var(--accent-color);
+}
+
+.btn-export {
+    background: var(--gradient-accent);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: var(--border-radius);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(66, 153, 225, 0.25);
+}
+
+.btn-export:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(66, 153, 225, 0.3);
+}
+
+/* Status Bar */
+.status-bar {
+    background: white;
+    padding: 18px 25px;
+    border-radius: var(--border-radius);
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    box-shadow: var(--card-shadow);
+    display: none;
+    border-left: 4px solid var(--accent-color);
+}
+
+.spinner {
+    width: 22px;
+    height: 22px;
+    border: 3px solid rgba(66, 153, 225, 0.2);
+    border-radius: 50%;
+    border-top-color: var(--accent-color);
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Stats Cards - Estilo Bancário */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+    margin-bottom: 35px;
+}
+
+.stat-card {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 28px;
+    box-shadow: var(--card-shadow);
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--gray-light);
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 100%;
+}
+
+.stat-card.primary { border-left: 6px solid var(--accent-color); }
+.stat-card.success { border-left: 6px solid var(--success-color); }
+.stat-card.warning { border-left: 6px solid var(--warning-color); }
+.stat-card.info { border-left: 6px solid var(--info-color); }
+
+.stat-card.primary::before { background: var(--accent-color); }
+.stat-card.success::before { background: var(--success-color); }
+.stat-card.warning::before { background: var(--warning-color); }
+.stat-card.info::before { background: var(--info-color); }
+
+.stat-icon {
+    width: 65px;
+    height: 65px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    color: white;
+    margin-bottom: 20px;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card.primary .stat-icon { background: var(--gradient-accent); }
+.stat-card.success .stat-icon { background: var(--gradient-success); }
+.stat-card.warning .stat-icon { background: linear-gradient(135deg, #d69e2e 0%, #b7791f 100%); }
+.stat-card.info .stat-icon { background: linear-gradient(135deg, #805ad5 0%, #6b46c1 100%); }
+
+.stat-content h3 {
+    font-size: 0.9rem;
+    color: var(--gray-dark);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+}
+
+.stat-number {
+    font-size: 2.8rem;
+    font-weight: 800;
+    color: var(--primary-color);
+    margin: 0;
+    line-height: 1;
+    font-family: 'Inter', sans-serif;
+}
+
+.stat-trend {
+    margin-top: 18px;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+.stat-card.primary .stat-trend { color: var(--accent-color); }
+.stat-card.success .stat-trend { color: var(--success-color); }
+
+/* Charts Section - Estilo Bancário */
+.charts-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(550px, 1fr));
+    gap: 30px;
+    margin-bottom: 35px;
+}
+
+.chart-container {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 28px;
+    box-shadow: var(--card-shadow);
+    border: 1px solid var(--gray-light);
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.chart-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--primary-color);
+    font-weight: 600;
+    font-size: 1.2rem;
+}
+
+.chart-header h3 i {
+    color: var(--accent-color);
+    font-size: 1.3rem;
+}
+
+.chart-select {
+    padding: 10px 18px;
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--gray-light);
+    background: white;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--dark-color);
+    transition: var(--transition);
+}
+
+.chart-select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+.chart-wrapper {
+    position: relative;
+    height: 320px;
+    width: 100%;
+}
+
+/* Data Table Section - Estilo Bancário */
+.data-section {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 28px;
+    box-shadow: var(--card-shadow);
+    border: 1px solid var(--gray-light);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.section-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--primary-color);
+    font-weight: 600;
+    font-size: 1.2rem;
+}
+
+.section-header h3 i {
+    color: var(--accent-color);
+    font-size: 1.3rem;
+}
+
+.table-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.search-box {
+    position: relative;
+}
+
+.search-box i {
+    position: absolute;
+    left: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gray-medium);
+    font-size: 1.1rem;
+}
+
+.search-box input {
+    padding: 12px 18px 12px 48px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--gray-light);
+    width: 320px;
+    transition: var(--transition);
+    font-size: 0.95rem;
+    font-weight: 400;
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+.select-control {
+    padding: 12px 18px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--gray-light);
+    background: white;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--dark-color);
+    transition: var(--transition);
+}
+
+.select-control:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+/* Table Styling - Estilo Bancário */
+.table-responsive {
+    overflow-x: auto;
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--gray-light);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px;
+}
+
+thead {
+    background: var(--gradient-primary);
+}
+
+th {
+    padding: 18px 20px;
+    text-align: left;
+    color: white;
+    font-weight: 600;
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.95rem;
+    letter-spacing: 0.3px;
+}
+
+th i {
+    margin-left: 8px;
+    opacity: 0.8;
+    font-size: 0.9rem;
+}
+
+tbody tr {
+    border-bottom: 1px solid var(--gray-light);
+    transition: var(--transition);
+}
+
+tbody tr:hover {
+    background: #f8fafc;
+}
+
+td {
+    padding: 18px 20px;
+    color: #4a5568;
+    font-weight: 400;
+}
+
+/* Status badges */
+.status-badge {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 0.3px;
+}
+
+.status-completed {
+    background: linear-gradient(135deg, #c6f6d5 0%, #9ae6b4 100%);
+    color: #22543d;
+    border: 1px solid #9ae6b4;
+}
+
+.status-pending {
+    background: linear-gradient(135deg, #feebc8 0%, #fbd38d 100%);
+    color: #744210;
+    border: 1px solid #fbd38d;
+}
+
+.status-progress {
+    background: linear-gradient(135deg, #bee3f8 0%, #90cdf4 100%);
+    color: #2c5282;
+    border: 1px solid #90cdf4;
+}
+
+/* Table Footer */
+.table-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 25px;
+    padding-top: 25px;
+    border-top: 1px solid var(--gray-light);
+}
+
+.pagination-info {
+    color: var(--gray-dark);
+    font-weight: 500;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.pagination-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--gray-light);
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    color: var(--dark-color);
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background: var(--gradient-accent);
+    color: white;
+    border-color: var(--accent-color);
+    transform: translateY(-2px);
+}
+
+.pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.page-numbers {
+    font-weight: 600;
+    color: var(--primary-color);
+    font-size: 0.95rem;
+}
+
+/* Células da tabela - Estilo Bancário */
+.date-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+}
+
+.date-cell i {
+    color: var(--accent-color);
+    font-size: 1.1rem;
+}
+
+.placa-badge {
+    background: var(--light-color);
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.9em;
+    letter-spacing: 1px;
+    color: var(--primary-color);
+    border: 1px solid var(--gray-light);
+}
+
+.tecnico-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.tecnico-avatar {
+    width: 40px;
+    height: 40px;
+    background: var(--gradient-primary);
+    color: white;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1rem;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tecnico-info strong {
+    display: block;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+.tecnico-info small {
+    display: block;
+    font-size: 0.8em;
+    color: var(--gray-medium);
+    font-weight: 400;
+}
+
+/* Notificações - Estilo Bancário */
+.notification {
+    position: fixed;
+    top: 25px;
+    right: 25px;
+    background: white;
+    color: var(--dark-color);
+    padding: 20px 25px;
+    border-radius: var(--border-radius);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    z-index: 1000;
+    animation: slideIn 0.3s ease;
+    max-width: 420px;
+    border-left: 5px solid var(--accent-color);
+    border: 1px solid var(--gray-light);
+}
+
+.notification-success { border-left-color: var(--success-color); }
+.notification-error { border-left-color: var(--danger-color); }
+.notification-warning { border-left-color: var(--warning-color); }
+.notification-info { border-left-color: var(--accent-color); }
+
+.notification i {
+    font-size: 1.3rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.notification-success i { background: var(--gradient-success); }
+.notification-error i { background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%); }
+.notification-warning i { background: linear-gradient(135deg, #d69e2e 0%, #b7791f 100%); }
+.notification-info i { background: var(--gradient-accent); }
+
+.notification-close {
+    background: none;
+    border: none;
+    color: var(--gray-medium);
+    cursor: pointer;
+    margin-left: auto;
+    font-size: 1.2rem;
+    transition: var(--transition);
+    padding: 5px;
+    border-radius: 6px;
+}
+
+.notification-close:hover {
+    color: var(--danger-color);
+    background: rgba(229, 62, 62, 0.1);
+}
+
+/* Filtros avançados */
+.advanced-filters {
+    background: #f8fafc;
+    padding: 20px;
+    border-radius: var(--border-radius);
+    margin-bottom: 20px;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    border: 1px solid var(--gray-light);
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.filter-group label {
+    font-size: 0.9rem;
+    color: var(--gray-dark);
+    font-weight: 500;
+}
+
+.select-filter {
+    padding: 10px 15px;
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--gray-light);
+    background: white;
+    min-width: 180px;
+    font-weight: 500;
+    color: var(--dark-color);
+    transition: var(--transition);
+}
+
+.select-filter:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+/* Botões */
+.btn-reset {
+    background: white;
+    color: var(--dark-color);
+    border: 1px solid var(--gray-light);
+    padding: 12px 24px;
+    border-radius: var(--border-radius);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-weight: 600;
+    margin-left: auto;
+}
+
+.btn-reset:hover {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(66, 153, 225, 0.2);
+}
+
+.btn-reset-small {
+    background: var(--gradient-accent);
+    color: white;
+    border: none;
+    padding: 8px 18px;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    margin-top: 15px;
+    font-size: 0.9em;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.btn-reset-small:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(66, 153, 225, 0.2);
+}
+
+/* Sem dados */
+.no-data {
+    text-align: center;
+    padding: 60px 20px !important;
+    color: var(--gray-medium);
+}
+
+.no-data i {
+    font-size: 3.5rem;
+    margin-bottom: 20px;
+    opacity: 0.3;
+    color: var(--accent-color);
+}
+
+.no-data p {
+    margin: 15px 0;
+    font-size: 1.1rem;
+    color: var(--gray-dark);
+}
+
+/* Botão de recarregar */
+.btn-retry {
+    margin-left: 15px;
+    padding: 8px 20px;
+    background: var(--gradient-accent);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.btn-retry:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(66, 153, 225, 0.2);
+}
+
+/* Responsividade */
+@media (max-width: 1200px) {
+    .charts-section {
+        grid-template-columns: 1fr;
+    }
+    
+    .charts-section .chart-container:first-child {
+        grid-column: 1;
+    }
+}
+
+@media (max-width: 992px) {
+    .sidebar {
+        width: 70px;
+        transform: translateX(-100%);
+    }
+    
+    .sidebar.active {
+        transform: translateX(0);
+    }
+    
+    .main-content {
+        margin-left: 0;
+    }
+    
+    .logo h2, .nav-item span, .user-details {
+        display: none;
+    }
+    
+    .logo {
+        justify-content: center;
+        padding: 20px 10px;
+    }
+    
+    .nav-item {
+        justify-content: center;
+        padding: 15px 10px;
+        margin: 5px 8px;
+    }
+    
+    .user-info {
+        justify-content: center;
+    }
+    
+    .menu-toggle {
+        display: block;
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        z-index: 99;
+        background: var(--gradient-accent);
+        color: white;
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
+        cursor: pointer;
+    }
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        padding: 20px;
+    }
+    
+    .main-header {
+        flex-direction: column;
+        gap: 20px;
+        align-items: flex-start;
+    }
+    
+    .header-actions {
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    
+    .search-box input {
+        width: 100%;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .table-controls {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .advanced-filters {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .filter-group {
+        width: 100%;
+    }
+    
+    .select-filter {
+        flex: 1;
+    }
+}
+
+/* Animações */
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+
+/* Efeitos de foco */
+input:focus, select:focus, button:focus {
+    outline: none;
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
