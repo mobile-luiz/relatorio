@@ -44,30 +44,19 @@
             overflow-x: hidden;
         }
         
-        .app-container {
-            display: flex;
-            min-height: 100vh;
-        }
-        
-        /* Sidebar */
-        .sidebar {
-            width: 280px;
+        /* Header Top */
+        .top-header {
             background: linear-gradient(180deg, var(--primary-900) 0%, var(--primary-800) 100%);
             color: white;
+            padding: 18px 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            position: sticky;
+            top: 0;
+            z-index: 100;
             display: flex;
-            flex-direction: column;
-            position: fixed;
-            height: 100vh;
-            z-index: 1000;
-            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.2);
-            transform: translateX(0);
-            transition: var(--transition);
-        }
-        
-        .sidebar-header {
-            padding: 28px 24px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(255, 255, 255, 0.03);
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
         }
         
         .brand {
@@ -104,66 +93,6 @@
             font-weight: 400;
         }
         
-        .nav-menu {
-            flex: 1;
-            padding: 32px 0;
-        }
-        
-        .nav-item {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            padding: 16px 24px;
-            color: rgba(255, 255, 255, 0.75);
-            text-decoration: none;
-            transition: var(--transition);
-            margin: 6px 16px;
-            border-radius: var(--radius-sm);
-            font-weight: 500;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .nav-item::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            height: 100%;
-            width: 4px;
-            background: var(--accent-teal);
-            transform: translateX(-100%);
-            transition: var(--transition);
-        }
-        
-        .nav-item:hover {
-            background: rgba(255, 255, 255, 0.05);
-            color: white;
-            transform: translateX(8px);
-        }
-        
-        .nav-item.active {
-            background: rgba(255, 255, 255, 0.08);
-            color: white;
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-        }
-        
-        .nav-item.active::before {
-            transform: translateX(0);
-        }
-        
-        .nav-item i {
-            width: 22px;
-            text-align: center;
-            font-size: 18px;
-        }
-        
-        .sidebar-footer {
-            padding: 24px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(255, 255, 255, 0.03);
-        }
-        
         .user-profile {
             display: flex;
             align-items: center;
@@ -197,10 +126,7 @@
         
         /* Main Content */
         .main-content {
-            flex: 1;
-            margin-left: 280px;
             padding: 24px 32px;
-            transition: var(--transition);
         }
         
         /* Header */
@@ -211,6 +137,8 @@
             margin-bottom: 32px;
             padding-bottom: 24px;
             border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+            gap: 20px;
         }
         
         .page-title h1 {
@@ -238,6 +166,7 @@
             display: flex;
             align-items: center;
             gap: 16px;
+            flex-wrap: wrap;
         }
         
         .period-selector {
@@ -761,39 +690,6 @@
             }
         }
         
-        @media (max-width: 992px) {
-            .sidebar {
-                transform: translateX(-100%);
-            }
-            
-            .sidebar.active {
-                transform: translateX(0);
-            }
-            
-            .main-content {
-                margin-left: 0;
-            }
-            
-            .menu-toggle {
-                display: block;
-                position: fixed;
-                top: 20px;
-                left: 20px;
-                z-index: 999;
-                background: var(--accent-blue);
-                color: white;
-                width: 48px;
-                height: 48px;
-                border-radius: 12px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 20px;
-                cursor: pointer;
-                box-shadow: var(--shadow-md);
-            }
-        }
-        
         @media (max-width: 768px) {
             .stats-grid {
                 grid-template-columns: 1fr;
@@ -811,274 +707,557 @@
             .select-control {
                 width: 100%;
             }
+            
+            .top-header {
+                padding: 14px 16px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+            
+            .brand {
+                width: 100%;
+            }
+            
+            .user-profile {
+                width: 100%;
+                justify-content: flex-start;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .charts-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .chart-container {
+                min-width: 100%;
+            }
+            
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+            
+            .header-actions {
+                width: 100%;
+                flex-direction: column;
+                gap: 12px;
+            }
+            
+            .period-selector,
+            .btn-primary {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .main-content {
+                padding: 16px;
+            }
+            
+            .chart-wrapper {
+                height: 250px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .main-content {
+                padding: 12px;
+            }
+            
+            .page-title h1 {
+                font-size: 22px;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            
+            .page-title h1 i {
+                font-size: 22px;
+            }
+            
+            .page-title p {
+                font-size: 14px;
+            }
+            
+            .stat-card {
+                padding: 20px;
+            }
+            
+            .stat-header {
+                margin-bottom: 16px;
+            }
+            
+            .stat-icon {
+                width: 48px;
+                height: 48px;
+                font-size: 20px;
+            }
+            
+            .stat-value {
+                font-size: 30px;
+            }
+            
+            .charts-section {
+                gap: 16px;
+            }
+            
+            .chart-container {
+                padding: 16px;
+            }
+            
+            .chart-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+            
+            .chart-wrapper {
+                height: 220px;
+            }
+            
+            .today-highlight {
+                font-size: 12px;
+                padding: 6px 10px;
+            }
+            
+            .data-section {
+                padding: 16px;
+            }
+            
+            .section-header h3 {
+                font-size: 16px;
+            }
+            
+            .search-box input {
+                padding: 10px 14px 10px 42px;
+                font-size: 13px;
+            }
+            
+            .select-control {
+                padding: 10px 14px;
+                font-size: 13px;
+            }
+            
+            .table-responsive {
+                margin: 0 -12px;
+                width: calc(100% + 24px);
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
+            }
+            
+            .data-table {
+                min-width: 600px;
+            }
+            
+            .data-table th,
+            .data-table td {
+                padding: 12px 14px;
+                font-size: 12px;
+            }
+            
+            .data-table th {
+                font-size: 11px;
+                padding: 14px 12px;
+            }
+            
+            .status-badge {
+                padding: 4px 10px;
+                font-size: 11px;
+            }
+            
+            .pagination-btn {
+                width: 36px;
+                height: 36px;
+            }
+            
+            .table-footer {
+                flex-direction: column;
+                gap: 16px;
+                align-items: center;
+                text-align: center;
+            }
+            
+            .notification {
+                top: 16px;
+                right: 16px;
+                left: 16px;
+                max-width: none;
+                padding: 16px;
+            }
+            
+            .loading-overlay p {
+                font-size: 16px;
+                text-align: center;
+                padding: 0 20px;
+            }
+            
+            /* Melhorias de toque para mobile */
+            .nav-item,
+            .btn-primary,
+            .period-selector,
+            .pagination-btn,
+            .status-badge {
+                min-height: 44px;
+            }
+            
+            button,
+            input[type="button"],
+            input[type="submit"] {
+                min-height: 44px;
+            }
+            
+            /* Ajustes para evitar zoom em inputs iOS */
+            input,
+            select,
+            textarea {
+                font-size: 16px !important;
+            }
+        }
+        
+        @media (max-width: 360px) {
+            .main-content {
+                padding: 10px;
+            }
+            
+            .page-title h1 {
+                font-size: 20px;
+            }
+            
+            .stat-value {
+                font-size: 26px;
+            }
+            
+            .chart-wrapper {
+                height: 200px;
+            }
+            
+            .data-table {
+                min-width: 500px;
+            }
+            
+            .data-table th,
+            .data-table td {
+                padding: 10px 8px;
+                font-size: 11px;
+            }
+            
+            .brand-text h2 {
+                font-size: 18px;
+            }
+        }
+        
+        /* Orientação paisagem em celulares */
+        @media (max-height: 480px) and (orientation: landscape) {
+            .chart-wrapper {
+                height: 200px;
+            }
+            
+            .main-content {
+                padding: 16px;
+            }
+        }
+        
+        /* Remover hover effects em mobile */
+        @media (hover: none) and (pointer: coarse) {
+            .stat-card:hover {
+                transform: none;
+                box-shadow: var(--shadow-md);
+            }
+            
+            .btn-primary:hover,
+            .period-selector:hover,
+            .pagination-btn:hover:not(:disabled) {
+                transform: none;
+            }
+        }
+        
+        /* Suporte para safe areas (iPhone X e similares) */
+        @supports (padding: max(0px)) {
+            @media (max-width: 480px) {
+                .main-content {
+                    padding-left: max(12px, env(safe-area-inset-left));
+                    padding-right: max(12px, env(safe-area-inset-right));
+                    padding-bottom: max(12px, env(safe-area-inset-bottom));
+                }
+                
+                .notification {
+                    top: max(16px, env(safe-area-inset-top));
+                    right: max(16px, env(safe-area-inset-right));
+                    left: max(16px, env(safe-area-inset-left));
+                }
+            }
+        }
+        
+        /* Scrollbar personalizada */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
         }
     </style>
 </head>
 <body>
-    <div class="app-container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="brand">
-                    <div class="brand-logo">
+    <!-- Top Header -->
+    <header class="top-header">
+        <div class="brand">
+            <div class="brand-logo">
+                <i class="fas fa-car"></i>
+            </div>
+            <div class="brand-text">
+                <h2>All Motors</h2>
+                <p>Sistema de Gestão Veicular</p>
+            </div>
+        </div>
+        
+        <div class="user-profile">
+            <div class="user-avatar">
+                A
+            </div>
+            <div class="user-info">
+                <h4>Admin Sistema</h4>
+                <span>Administrador</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Page Header -->
+        <header class="page-header">
+            <div class="page-title">
+                <h1><i class="fas fa-clipboard-list"></i> Relatório de Checklists</h1>
+                <p>Monitoramento e análise de veículos atendidos</p>
+            </div>
+            
+            <div class="header-actions">
+                <div class="period-selector">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span id="period-text">Hoje</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <button class="btn-primary" id="export-btn">
+                    <i class="fas fa-download"></i> Exportar Dados
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <section class="stats-grid">
+            <div class="stat-card primary">
+                <div class="stat-header">
+                    <div class="stat-icon">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <div class="stat-badge">
+                        <i class="fas fa-arrow-up"></i>
+                        12% vs anterior
+                    </div>
+                </div>
+                <div class="stat-content">
+                    <h3>Total de Checklists</h3>
+                    <p id="total-checklists" class="stat-value">0</p>
+                    <div class="stat-footer">
+                        <i class="fas fa-history"></i>
+                        <span>Atualizado há poucos segundos</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stat-card success">
+                <div class="stat-header">
+                    <div class="stat-icon">
+                        <i class="fas fa-industry"></i>
+                    </div>
+                    <div class="stat-badge">
+                        <i class="fas fa-plus"></i>
+                        3 novos
+                    </div>
+                </div>
+                <div class="stat-content">
+                    <h3>Fabricantes Atendidos</h3>
+                    <p id="total-fabricantes" class="stat-value">0</p>
+                    <div class="stat-footer">
+                        <i class="fas fa-building"></i>
+                        <span>Diversidade de marcas</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stat-card warning">
+                <div class="stat-header">
+                    <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                </div>
+                <div class="stat-content">
+                    <h3>Técnicos Ativos</h3>
+                    <p id="total-tecnicos" class="stat-value">0</p>
+                    <div class="stat-footer">
+                        <i class="fas fa-user-check"></i>
+                        <span>Equipe especializada</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stat-card info">
+                <div class="stat-header">
+                    <div class="stat-icon">
                         <i class="fas fa-car"></i>
                     </div>
-                    <div class="brand-text">
-                        <h2>All Motors</h2>
-                        <p>Sistema de Gestão</p>
+                </div>
+                <div class="stat-content">
+                    <h3>Veículos Únicos</h3>
+                    <p id="total-veiculos" class="stat-value">0</p>
+                    <div class="stat-footer">
+                        <i class="fas fa-fingerprint"></i>
+                        <span>Placas cadastradas</span>
                     </div>
                 </div>
             </div>
-            
-            <nav class="nav-menu">
-                <a href="#" class="nav-item active">
-                    <i class="fas fa-tachometer-alt"></i>
-                    <span>Dashboard</span>
-                </a>
-            </nav>
-            
-            <div class="sidebar-footer">
-                <div class="user-profile">
-                    <div class="user-avatar">
-                        A
-                    </div>
-                    <div class="user-info">
-                        <h4>Admin Sistema</h4>
-                       
-                    </div>
-                </div>
-            </div>
-        </aside>
+        </section>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Header -->
-            <header class="page-header">
-                <div class="page-title">
-                    <h1><i class="fas fa-clipboard-list"></i> Relatório de Checklists</h1>
-                    <p>Monitoramento e análise de veículos atendidos</p>
+        <!-- Charts Section -->
+        <section class="charts-section">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3><i class="fas fa-chart-bar"></i> Checklists por Modelo</h3>
+                    <div class="chart-options">
+                        <select id="chart-type" class="chart-select">
+                            <option value="bar">Gráfico de Barras</option>
+                            <option value="line">Gráfico de Linhas</option>
+                            <option value="pie">Gráfico de Pizza</option>
+                            <option value="doughnut">Rosca</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="modelosChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3><i class="fas fa-calendar"></i> Checklist por Data</h3>
+                    <div class="chart-options">
+                        <select id="timeline-range" class="chart-select">
+                            <option value="1" selected>Hoje</option>
+                            <option value="7">7 dias</option>
+                            <option value="15">15 dias</option>
+                            <option value="30">30 dias</option>
+                            <option value="90">90 dias</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="timelineChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Data Table -->
+        <section class="data-section">
+            <div class="section-header">
+                <h3><i class="fas fa-table"></i> Histórico de Checklists</h3>
+                
+                <div class="table-tools">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="search-input" placeholder="Buscar por placa, modelo ou técnico...">
+                    </div>
+                    
+                    <select id="fabricante-filter" class="select-control">
+                        <option value="">Todos fabricantes</option>
+                    </select>
+                    
+                    <select id="tecnico-filter" class="select-control">
+                        <option value="">Todos técnicos</option>
+                    </select>
+                    
+                    <select id="items-per-page" class="select-control">
+                        <option value="10">10 itens</option>
+                        <option value="25" selected>25 itens</option>
+                        <option value="50">50 itens</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="data-table" id="checklist-table">
+                    <thead>
+                        <tr>
+                            <th data-sort="data">
+                                <span>Data</span>
+                                <i class="fas fa-sort"></i>
+                            </th>
+                            <th data-sort="placa">
+                                <span>Placa</span>
+                                <i class="fas fa-sort"></i>
+                            </th>
+                            <th data-sort="modelo">
+                                <span>Modelo</span>
+                                <i class="fas fa-sort"></i>
+                            </th>
+                            <th data-sort="fabricante">
+                                <span>Fabricante</span>
+                                <i class="fas fa-sort"></i>
+                            </th>
+                            <th data-sort="tecnico">
+                                <span>Técnico</span>
+                                <i class="fas fa-sort"></i>
+                            </th>
+                            <th>
+                                <span>Status</span>
+                            </th>
+                            <th>
+                                <span>Ações</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <!-- Dados serão inseridos via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="table-footer">
+                <div class="pagination-info">
+                    Mostrando <span id="current-items">0</span> de <span id="total-items">0</span> itens
                 </div>
                 
-                <div class="header-actions">
-                    <div class="period-selector">
-                        <i class="fas fa-calendar-alt"></i>
-                        <span id="period-text">Hoje</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-                    <button class="btn-primary" id="export-btn">
-                        <i class="fas fa-download"></i> Exportar Dados
+                <div class="pagination-controls">
+                    <button id="prev-page" class="pagination-btn" disabled>
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <span class="page-numbers">
+                        Página <span id="current-page">1</span> de <span id="total-pages">1</span>
+                    </span>
+                    <button id="next-page" class="pagination-btn" disabled>
+                        <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
-            </header>
-
-            <!-- Stats Grid -->
-            <section class="stats-grid">
-                <div class="stat-card primary">
-                    <div class="stat-header">
-                        <div class="stat-icon">
-                            <i class="fas fa-clipboard-check"></i>
-                        </div>
-                        <div class="stat-badge">
-                            <i class="fas fa-arrow-up"></i>
-                            12% vs anterior
-                        </div>
-                    </div>
-                    <div class="stat-content">
-                        <h3>Total de Checklists</h3>
-                        <p id="total-checklists" class="stat-value">0</p>
-                        <div class="stat-footer">
-                            <i class="fas fa-history"></i>
-                            <span>Atualizado há poucos segundos</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="stat-card success">
-                    <div class="stat-header">
-                        <div class="stat-icon">
-                            <i class="fas fa-industry"></i>
-                        </div>
-                        <div class="stat-badge">
-                            <i class="fas fa-plus"></i>
-                            3 novos
-                        </div>
-                    </div>
-                    <div class="stat-content">
-                        <h3>Fabricantes Atendidos</h3>
-                        <p id="total-fabricantes" class="stat-value">0</p>
-                        <div class="stat-footer">
-                            <i class="fas fa-building"></i>
-                            <span>Diversidade de marcas</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="stat-card warning">
-                    <div class="stat-header">
-                        <div class="stat-icon">
-                            <i class="fas fa-users"></i>
-                        </div>
-                    </div>
-                    <div class="stat-content">
-                        <h3>Técnicos Ativos</h3>
-                        <p id="total-tecnicos" class="stat-value">0</p>
-                        <div class="stat-footer">
-                            <i class="fas fa-user-check"></i>
-                            <span>Equipe especializada</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="stat-card info">
-                    <div class="stat-header">
-                        <div class="stat-icon">
-                            <i class="fas fa-car"></i>
-                        </div>
-                    </div>
-                    <div class="stat-content">
-                        <h3>Veículos Únicos</h3>
-                        <p id="total-veiculos" class="stat-value">0</p>
-                        <div class="stat-footer">
-                            <i class="fas fa-fingerprint"></i>
-                            <span>Placas cadastradas</span>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Charts Section -->
-            <section class="charts-section">
-                <div class="chart-container">
-                    <div class="chart-header">
-                        <h3><i class="fas fa-chart-bar"></i> Checklists por Modelo</h3>
-                        <div class="chart-options">
-                            <select id="chart-type" class="chart-select">
-                                <option value="bar">Gráfico de Barras</option>
-                                <option value="line">Gráfico de Linhas</option>
-                                <option value="pie">Gráfico de Pizza</option>
-                                <option value="doughnut">Rosca</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="chart-wrapper">
-                        <canvas id="modelosChart"></canvas>
-                    </div>
-                </div>
-                
-                <div class="chart-container">
-                    <div class="chart-header">
-                        <h3><i class="fas fa-calendar"></i> Checklist por Data</h3>
-                        <div class="chart-options">
-                            <select id="timeline-range" class="chart-select">
-                                <option value="1" selected>Hoje</option>
-                                <option value="7">7 dias</option>
-                                <option value="15">15 dias</option>
-                                <option value="30">30 dias</option>
-                                <option value="90">90 dias</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="chart-wrapper">
-                        <canvas id="timelineChart"></canvas>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Data Table -->
-            <section class="data-section">
-                <div class="section-header">
-                    <h3><i class="fas fa-table"></i> Histórico de Checklists</h3>
-                    
-                    <div class="table-tools">
-                        <div class="search-box">
-                            <i class="fas fa-search"></i>
-                            <input type="text" id="search-input" placeholder="Buscar por placa, modelo ou técnico...">
-                        </div>
-                        
-                        <select id="fabricante-filter" class="select-control">
-                            <option value="">Todos fabricantes</option>
-                        </select>
-                        
-                        <select id="tecnico-filter" class="select-control">
-                            <option value="">Todos técnicos</option>
-                        </select>
-                        
-                        <select id="items-per-page" class="select-control">
-                            <option value="10">10 itens</option>
-                            <option value="25" selected>25 itens</option>
-                            <option value="50">50 itens</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="table-responsive">
-                    <table class="data-table" id="checklist-table">
-                        <thead>
-                            <tr>
-                                <th data-sort="data">
-                                    <span>Data</span>
-                                    <i class="fas fa-sort"></i>
-                                </th>
-                                <th data-sort="placa">
-                                    <span>Placa</span>
-                                    <i class="fas fa-sort"></i>
-                                </th>
-                                <th data-sort="modelo">
-                                    <span>Modelo</span>
-                                    <i class="fas fa-sort"></i>
-                                </th>
-                                <th data-sort="fabricante">
-                                    <span>Fabricante</span>
-                                    <i class="fas fa-sort"></i>
-                                </th>
-                                <th data-sort="tecnico">
-                                    <span>Técnico</span>
-                                    <i class="fas fa-sort"></i>
-                                </th>
-                                <th>
-                                    <span>Status</span>
-                                </th>
-                                <th>
-                                    <span>Ações</span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-body">
-                            <!-- Dados serão inseridos via JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-                
-                <div class="table-footer">
-                    <div class="pagination-info">
-                        Mostrando <span id="current-items">0</span> de <span id="total-items">0</span> itens
-                    </div>
-                    
-                    <div class="pagination-controls">
-                        <button id="prev-page" class="pagination-btn" disabled>
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                        <span class="page-numbers">
-                            Página <span id="current-page">1</span> de <span id="total-pages">1</span>
-                        </span>
-                        <button id="next-page" class="pagination-btn" disabled>
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
-                    </div>
-                </div>
-            </section>
-        </main>
-    </div>
+            </div>
+        </section>
+    </main>
 
     <!-- Loading Overlay -->
     <div class="loading-overlay" id="loading-overlay">
         <div class="spinner"></div>
         <p>Carregando dados...</p>
-    </div>
-
-    <!-- Menu Toggle for Mobile -->
-    <div class="menu-toggle" id="menu-toggle">
-        <i class="fas fa-bars"></i>
     </div>
 
     <script src="script.js"></script>

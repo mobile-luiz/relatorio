@@ -1,8 +1,8 @@
 /**
  * DASHBOARD ALL MOTORS - Sistema de Gestão Veicular
- * Versão: 3.1.0
+ * Versão: 3.1.1
  * Estilo: Bancário Premium
- * Funcionalidade: Adicionado filtro "Hoje" e gráfico com destaque para o dia atual
+ * Alteração: Menu lateral removido, header top adicionado
  */
 
 class Dashboard {
@@ -76,7 +76,6 @@ class Dashboard {
             
             // Buttons
             exportBtn: document.getElementById('export-btn'),
-            menuToggle: document.getElementById('menu-toggle'),
             periodText: document.getElementById('period-text'),
             
             // Overlay
@@ -750,7 +749,7 @@ class Dashboard {
             const value = this.elements.timelineRange.value;
             this.state.filters.periodo = value;
             
-            // Atualizar texto do seletor de período
+            // Atualizar texto do período
             this.updatePeriodText(value);
             
             this.state.currentPage = 1;
@@ -761,11 +760,6 @@ class Dashboard {
         // Exportar
         this.elements.exportBtn.addEventListener('click', () => {
             this.exportData();
-        });
-        
-        // Menu mobile
-        this.elements.menuToggle.addEventListener('click', () => {
-            document.querySelector('.sidebar').classList.toggle('active');
         });
         
         // Selecionar período
