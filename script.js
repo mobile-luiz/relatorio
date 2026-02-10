@@ -1,8 +1,8 @@
 /**
  * DASHBOARD ALL MOTORS - Sistema de Gestão Veicular
- * Versão: 3.1.1
+ * Versão: 4.0.0
  * Estilo: Bancário Premium
- * Alteração: Menu lateral removido, header top adicionado
+ * Alteração: Sem dados fictícios - apenas dados reais da planilha
  */
 
 class Dashboard {
@@ -38,11 +38,12 @@ class Dashboard {
                 search: '',
                 fabricante: '',
                 tecnico: '',
-                periodo: '1' // Padrão: Hoje
+                periodo: '1'
             },
             fabricantes: [],
             tecnicos: [],
-            charts: {}
+            charts: {},
+            hasData: false
         };
 
         // Elementos DOM
@@ -77,9 +78,11 @@ class Dashboard {
             // Buttons
             exportBtn: document.getElementById('export-btn'),
             periodText: document.getElementById('period-text'),
+            retryBtn: document.getElementById('retry-btn'),
             
-            // Overlay
-            loadingOverlay: document.getElementById('loading-overlay')
+            // Overlay e estados
+            loadingOverlay: document.getElementById('loading-overlay'),
+            noDataState: document.getElementById('no-data-state')
         };
 
         // Inicialização
@@ -92,17 +95,21 @@ class Dashboard {
             this.setupEventListeners();
             
             // Tentar carregar dados da API
-            let data = await this.fetchData();
+            const apiData = await this.fetchData();
             
-            if (data.length === 0) {
-                // Usar dados de demonstração se API vazia
-                data = this.generateDemoData();
-                this.showNotification('Usando dados de demonstração', 'warning');
+            if (apiData === null || apiData.length === 0) {
+                // Mostrar estado sem dados
+                this.showNoDataState();
+                this.hideLoading();
+                return;
             }
             
-            this.state.data = this.processData(data);
+            // Processar dados
+            this.state.data = this.processData(apiData);
+            this.state.hasData = true;
             this.applyFilters();
             this.updateUI();
+            this.enableControls(true);
             
             setTimeout(() => {
                 this.hideLoading();
@@ -117,6 +124,7 @@ class Dashboard {
 
     async fetchData() {
         try {
+            console.log('Buscando dados da API...');
             const response = await fetch(this.config.API_URL);
             
             if (!response.ok) {
@@ -124,101 +132,115 @@ class Dashboard {
             }
             
             const data = await response.json();
-            return Array.isArray(data) ? data : [];
+            
+            // Verificar se há dados válidos
+            if (!Array.isArray(data)) {
+                console.warn('Dados não são um array:', data);
+                return null;
+            }
+            
+            if (data.length === 0) {
+                console.log('API retornou array vazio');
+                return null;
+            }
+            
+            // Verificar estrutura mínima dos dados
+            const firstItem = data[0];
+            if (!firstItem) {
+                console.warn('Primeiro item inválido');
+                return null;
+            }
+            
+            // Verificar se tem pelo menos um campo esperado
+            const hasValidStructure = 
+                (firstItem.DATAENTRADA || firstItem.data || firstItem.DATA) ||
+                (firstItem.PLACA || firstItem.placa) ||
+                (firstItem.MODELO || firstItem.modelo) ||
+                (firstItem.FABRICANTE || firstItem.fabricante);
+            
+            if (!hasValidStructure) {
+                console.warn('Estrutura de dados inválida:', firstItem);
+                return null;
+            }
+            
+            console.log(`Dados carregados: ${data.length} registros`);
+            return data;
             
         } catch (error) {
-            console.warn('Erro ao buscar dados da API:', error);
-            return [];
+            console.error('Erro ao buscar dados da API:', error);
+            return null;
         }
     }
 
     processData(data) {
-        return data.map((item, index) => ({
-            id: index + 1,
-            data: item.DATAENTRADA || item.data || new Date().toISOString(),
-            placa: item.PLACA || item.placa || `ABC${String(index + 1000).padStart(4, '0')}`,
-            modelo: item.MODELO || item.modelo || 'Modelo não informado',
-            fabricante: item.FABRICANTE || item.fabricante || 'Fabricante não informado',
-            tecnico: item.TECNICO_LOGADO || item.TECNICO || item.tecnico || 'Técnico não informado',
-            status: this.generateStatus()
-        })).sort((a, b) => new Date(b.data) - new Date(a.data));
-    }
-
-    generateDemoData() {
-        const fabricantes = ['Volkswagen', 'Fiat', 'Ford', 'Chevrolet', 'Toyota', 'Honda', 'Hyundai', 'Renault'];
-        const modelos = {
-            'Volkswagen': ['Gol', 'Polo', 'Virtus', 'T-Cross', 'Nivus', 'Jetta'],
-            'Fiat': ['Uno', 'Argo', 'Cronos', 'Mobi', 'Toro', 'Strada'],
-            'Ford': ['Ka', 'Fiesta', 'EcoSport', 'Ranger', 'Territory'],
-            'Chevrolet': ['Onix', 'Prisma', 'Tracker', 'S10', 'Spin'],
-            'Toyota': ['Corolla', 'Hilux', 'Yaris', 'SW4', 'RAV4'],
-            'Honda': ['Civic', 'Fit', 'HR-V', 'City', 'Accord'],
-            'Hyundai': ['HB20', 'Creta', 'Tucson', 'ix35', 'Santa Fe'],
-            'Renault': ['Kwid', 'Sandero', 'Logan', 'Duster', 'Captur']
-        };
-        const tecnicos = ['Carlos Silva', 'Ana Santos', 'Pedro Costa', 'Mariana Lima', 'Roberto Alves', 'Fernanda Rocha'];
-        
-        const data = [];
-        const hoje = new Date();
-        
-        for (let i = 0; i < 120; i++) {
-            const fabricante = fabricantes[Math.floor(Math.random() * fabricantes.length)];
-            const modeloList = modelos[fabricante];
-            const modelo = modeloList[Math.floor(Math.random() * modeloList.length)];
+        return data.map((item, index) => {
+            // Normalizar nomes dos campos
+            const placa = item.PLACA || item.placa || '';
+            const modelo = item.MODELO || item.modelo || 'Não informado';
+            const fabricante = item.FABRICANTE || item.fabricante || 'Não informado';
             
-            const dataItem = new Date(hoje);
-            dataItem.setDate(hoje.getDate() - Math.floor(Math.random() * 90));
-            dataItem.setHours(Math.floor(Math.random() * 24));
-            dataItem.setMinutes(Math.floor(Math.random() * 60));
-            
-            data.push({
-                DATAENTRADA: dataItem.toISOString(),
-                PLACA: `${['ABC', 'DEF', 'GHI', 'JKL'][Math.floor(Math.random() * 4)]}${String(Math.floor(Math.random() * 9000) + 1000)}`,
-                MODELO: modelo,
-                FABRICANTE: fabricante,
-                TECNICO_LOGADO: tecnicos[Math.floor(Math.random() * tecnicos.length)]
-            });
-        }
-        
-        // Adicionar alguns registros de hoje
-        for (let i = 0; i < 5; i++) {
-            const fabricante = fabricantes[Math.floor(Math.random() * fabricantes.length)];
-            const modeloList = modelos[fabricante];
-            const modelo = modeloList[Math.floor(Math.random() * modeloList.length)];
-            
-            const agora = new Date();
-            agora.setHours(Math.floor(Math.random() * 8) + 8); // Entre 8h e 16h
-            
-            data.push({
-                DATAENTRADA: agora.toISOString(),
-                PLACA: `${['XYZ', 'MNO', 'PQR', 'STU'][Math.floor(Math.random() * 4)]}${String(Math.floor(Math.random() * 9000) + 1000)}`,
-                MODELO: modelo,
-                FABRICANTE: fabricante,
-                TECNICO_LOGADO: tecnicos[Math.floor(Math.random() * tecnicos.length)]
-            });
-        }
-        
-        return data;
-    }
-
-    generateStatus() {
-        const statuses = [
-            { type: 'completed', label: 'Concluído', icon: 'check-circle', probability: 0.7 },
-            { type: 'progress', label: 'Em Andamento', icon: 'sync-alt', probability: 0.2 },
-            { type: 'pending', label: 'Pendente', icon: 'clock', probability: 0.1 }
-        ];
-        
-        let random = Math.random();
-        let cumulative = 0;
-        
-        for (const status of statuses) {
-            cumulative += status.probability;
-            if (random <= cumulative) {
-                return status;
+            // Tratar data
+            let dataItem;
+            if (item.DATAENTRADA) {
+                dataItem = item.DATAENTRADA;
+            } else if (item.data) {
+                dataItem = item.data;
+            } else if (item.DATA) {
+                dataItem = item.DATA;
+            } else {
+                dataItem = new Date().toISOString();
             }
-        }
+            
+            // Tratar técnico
+            let tecnico;
+            if (item.TECNICO_LOGADO) {
+                tecnico = item.TECNICO_LOGADO;
+            } else if (item.TECNICO) {
+                tecnico = item.TECNICO;
+            } else if (item.tecnico) {
+                tecnico = item.tecnico;
+            } else if (item.RESPONSAVEL) {
+                tecnico = item.RESPONSAVEL;
+            } else {
+                tecnico = 'Não informado';
+            }
+            
+            // Determinar status baseado em dados disponíveis
+            let status;
+            if (item.STATUS) {
+                status = this.normalizeStatus(item.STATUS);
+            } else if (item.status) {
+                status = this.normalizeStatus(item.status);
+            } else {
+                // Status padrão se não houver informação
+                status = { type: 'completed', label: 'Concluído', icon: 'check-circle' };
+            }
+            
+            return {
+                id: index + 1,
+                data: dataItem,
+                placa: placa,
+                modelo: modelo,
+                fabricante: fabricante,
+                tecnico: tecnico,
+                status: status,
+                rawData: item // Manter dados originais para referência
+            };
+        }).sort((a, b) => new Date(b.data) - new Date(a.data));
+    }
+
+    normalizeStatus(statusStr) {
+        const status = String(statusStr).toLowerCase().trim();
         
-        return statuses[0];
+        if (status.includes('concluído') || status.includes('finalizado') || status.includes('completado') || status === 'done' || status === 'complete') {
+            return { type: 'completed', label: 'Concluído', icon: 'check-circle' };
+        } else if (status.includes('andamento') || status.includes('progresso') || status.includes('processando') || status === 'in progress') {
+            return { type: 'progress', label: 'Em Andamento', icon: 'sync-alt' };
+        } else if (status.includes('pendente') || status.includes('aguardando') || status.includes('esperando') || status === 'pending') {
+            return { type: 'pending', label: 'Pendente', icon: 'clock' };
+        } else {
+            return { type: 'completed', label: 'Concluído', icon: 'check-circle' };
+        }
     }
 
     applyFilters() {
@@ -250,7 +272,7 @@ class Dashboard {
             const hoje = new Date();
             
             if (this.state.filters.periodo === '1') {
-                // Filtro "Hoje" - apenas registros do dia atual
+                // Filtro "Hoje"
                 const inicioDia = new Date(hoje);
                 inicioDia.setHours(0, 0, 0, 0);
                 const fimDia = new Date(hoje);
@@ -268,7 +290,7 @@ class Dashboard {
                 // Outros períodos
                 const dias = parseInt(this.state.filters.periodo);
                 const limite = new Date(hoje);
-                limite.setDate(limite.getDate() - dias + 1); // +1 para incluir hoje
+                limite.setDate(limite.getDate() - dias + 1);
                 limite.setHours(0, 0, 0, 0);
                 
                 filtered = filtered.filter(item => {
@@ -319,9 +341,9 @@ class Dashboard {
 
     updateStats() {
         const total = this.state.data.length;
-        const fabricantes = [...new Set(this.state.data.map(d => d.fabricante))].length;
-        const tecnicos = [...new Set(this.state.data.map(d => d.tecnico))].length;
-        const veiculos = [...new Set(this.state.data.map(d => d.placa))].length;
+        const fabricantes = [...new Set(this.state.data.map(d => d.fabricante).filter(f => f && f !== 'Não informado'))].length;
+        const tecnicos = [...new Set(this.state.data.map(d => d.tecnico).filter(t => t && t !== 'Não informado'))].length;
+        const veiculos = [...new Set(this.state.data.map(d => d.placa).filter(p => p))].length;
         
         this.elements.totalChecklists.textContent = total.toLocaleString('pt-BR');
         this.elements.totalFabricantes.textContent = fabricantes.toLocaleString('pt-BR');
@@ -331,7 +353,7 @@ class Dashboard {
 
     updateFiltersDropdowns() {
         // Fabricantes
-        const fabricantes = ['', ...new Set(this.state.data.map(d => d.fabricante).filter(Boolean))];
+        const fabricantes = ['', ...new Set(this.state.data.map(d => d.fabricante).filter(f => f && f !== 'Não informado'))].sort();
         this.elements.fabricanteFilter.innerHTML = fabricantes.map(f => 
             `<option value="${f}" ${f === this.state.filters.fabricante ? 'selected' : ''}>
                 ${f || 'Todos fabricantes'}
@@ -339,7 +361,7 @@ class Dashboard {
         ).join('');
         
         // Técnicos
-        const tecnicos = ['', ...new Set(this.state.data.map(d => d.tecnico).filter(Boolean))];
+        const tecnicos = ['', ...new Set(this.state.data.map(d => d.tecnico).filter(t => t && t !== 'Não informado'))].sort();
         this.elements.tecnicoFilter.innerHTML = tecnicos.map(t => 
             `<option value="${t}" ${t === this.state.filters.tecnico ? 'selected' : ''}>
                 ${t || 'Todos técnicos'}
@@ -353,19 +375,37 @@ class Dashboard {
         const pageData = this.state.filteredData.slice(startIndex, endIndex);
         
         if (pageData.length === 0) {
-            this.elements.tableBody.innerHTML = `
-                <tr>
-                    <td colspan="7" class="no-data" style="text-align: center; padding: 60px 20px;">
-                        <i class="fas fa-search" style="font-size: 48px; color: #adb5bd; margin-bottom: 20px;"></i>
-                        <p style="color: #6c757d; font-size: 16px; margin-bottom: 20px;">
-                            Nenhum checklist encontrado com os filtros atuais
-                        </p>
-                        <button onclick="dashboard.resetFilters()" class="btn-primary" style="padding: 10px 20px; font-size: 14px;">
-                            <i class="fas fa-redo"></i> Limpar Filtros
-                        </button>
-                    </td>
-                </tr>
-            `;
+            // Verificar se é porque não há dados ou por filtros
+            const hasNoDataAtAll = this.state.data.length === 0;
+            
+            if (hasNoDataAtAll) {
+                this.elements.tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="no-data-state" style="background: none; border: none;">
+                            <i class="fas fa-database" style="font-size: 48px;"></i>
+                            <h3 style="font-size: 18px;">Sem dados disponíveis</h3>
+                            <p style="max-width: 400px;">A planilha conectada não contém checklists ou está vazia.</p>
+                            <button onclick="dashboard.retryLoad()" class="btn-retry" style="margin-top: 20px;">
+                                <i class="fas fa-sync-alt"></i> Tentar novamente
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            } else {
+                // Há dados, mas filtros não retornam resultados
+                this.elements.tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 60px 20px; color: var(--text-secondary);">
+                            <i class="fas fa-search" style="font-size: 48px; margin-bottom: 20px; opacity: 0.5;"></i>
+                            <h4 style="margin-bottom: 10px;">Nenhum resultado encontrado</h4>
+                            <p style="margin-bottom: 20px;">Nenhum checklist corresponde aos filtros aplicados.</p>
+                            <button onclick="dashboard.resetFilters()" class="btn-retry" style="font-size: 14px;">
+                                <i class="fas fa-redo"></i> Limpar Filtros
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }
             return;
         }
         
@@ -385,7 +425,7 @@ class Dashboard {
                 </td>
                 <td>
                     <span style="background: #e9ecef; padding: 6px 12px; border-radius: 20px; font-family: monospace; font-weight: 600;">
-                        ${item.placa}
+                        ${item.placa || 'Não informada'}
                     </span>
                 </td>
                 <td>
@@ -420,8 +460,33 @@ class Dashboard {
     }
 
     updateCharts() {
+        if (this.state.data.length === 0) {
+            this.showNoChartsMessage();
+            return;
+        }
+        
         this.createModelosChart();
         this.createTimelineChart();
+    }
+
+    showNoChartsMessage() {
+        // Destruir gráficos se existirem
+        if (this.state.charts.modelos) {
+            this.state.charts.modelos.destroy();
+        }
+        if (this.state.charts.timeline) {
+            this.state.charts.timeline.destroy();
+        }
+        
+        // Mostrar mensagem nos gráficos
+        const chartWrappers = document.querySelectorAll('.chart-wrapper');
+        chartWrappers.forEach(wrapper => {
+            const canvas = wrapper.querySelector('canvas');
+            const message = wrapper.querySelector('.chart-no-data');
+            
+            if (canvas) canvas.style.display = 'none';
+            if (message) message.style.display = 'block';
+        });
     }
 
     createModelosChart() {
@@ -433,7 +498,7 @@ class Dashboard {
         const contagem = {};
         
         this.state.filteredData.forEach(d => {
-            const modelo = d.modelo;
+            const modelo = d.modelo || 'Não informado';
             contagem[modelo] = (contagem[modelo] || 0) + 1;
         });
         
@@ -441,8 +506,17 @@ class Dashboard {
             .sort((a, b) => b[1] - a[1])
             .slice(0, this.config.MAX_MODELOS);
         
-        const chartType = this.elements.chartType.value;
+        if (sorted.length === 0) {
+            this.showNoChartsMessage();
+            return;
+        }
         
+        // Mostrar canvas
+        this.elements.modelosChart.style.display = 'block';
+        const message = this.elements.modelosChart.closest('.chart-wrapper').querySelector('.chart-no-data');
+        if (message) message.style.display = 'none';
+        
+        const chartType = this.elements.chartType.value;
         const isCircular = chartType === 'pie' || chartType === 'doughnut';
         
         this.state.charts.modelos = new Chart(ctx, {
@@ -543,7 +617,7 @@ class Dashboard {
                 const dataStr = dataItem.toLocaleDateString('pt-BR');
                 const dataChart = new Date(dataStr.split('/').reverse().join('-'));
                 const limite = new Date(hoje);
-                limite.setDate(hoje.getDate() - dias + 1); // +1 para incluir hoje
+                limite.setDate(hoje.getDate() - dias + 1);
                 
                 if (dataChart >= limite && dataChart <= hoje) {
                     dadosPorData[dataStr] = (dadosPorData[dataStr] || 0) + 1;
@@ -552,6 +626,18 @@ class Dashboard {
                 console.warn('Data inválida:', d.data);
             }
         });
+        
+        // Verificar se há dados
+        const hasData = Object.values(dadosPorData).some(val => val > 0);
+        if (!hasData) {
+            this.showNoChartsMessage();
+            return;
+        }
+        
+        // Mostrar canvas
+        this.elements.timelineChart.style.display = 'block';
+        const message = this.elements.timelineChart.closest('.chart-wrapper').querySelector('.chart-no-data');
+        if (message) message.style.display = 'none';
         
         // Ordenar por data
         const sorted = Object.entries(dadosPorData)
@@ -569,24 +655,6 @@ class Dashboard {
                 return date.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric' });
             }
         });
-
-        // Adicionar destaque visual para "Hoje" se existir no gráfico
-        const chartContainer = this.elements.timelineChart.closest('.chart-wrapper');
-        let highlight = chartContainer.querySelector('.today-highlight');
-        
-        const hojeStr = hoje.toLocaleDateString('pt-BR');
-        const checklistsHoje = dadosPorData[hojeStr] || 0;
-        
-        if (checklistsHoje > 0) {
-            if (!highlight) {
-                highlight = document.createElement('div');
-                highlight.className = 'today-highlight';
-                chartContainer.insertBefore(highlight, this.elements.timelineChart);
-            }
-            highlight.innerHTML = `<i class="fas fa-calendar-day"></i> Hoje: ${checklistsHoje} checklist${checklistsHoje !== 1 ? 's' : ''}`;
-        } else if (highlight) {
-            highlight.remove();
-        }
         
         this.state.charts.timeline = new Chart(ctx, {
             type: 'line',
@@ -619,19 +687,7 @@ class Dashboard {
                         titleFont: { size: 14 },
                         bodyFont: { size: 13 },
                         padding: 12,
-                        cornerRadius: 6,
-                        callbacks: {
-                            label: function(context) {
-                                const label = context.dataset.label || '';
-                                const value = context.parsed.y;
-                                const hojeIndex = labels.findIndex(l => l.includes('Hoje'));
-                                
-                                if (hojeIndex === context.dataIndex) {
-                                    return `${label}: ${value} (HOJE)`;
-                                }
-                                return `${label}: ${value}`;
-                            }
-                        }
+                        cornerRadius: 6
                     }
                 },
                 scales: {
@@ -672,7 +728,7 @@ class Dashboard {
         this.elements.currentPage.textContent = this.state.currentPage;
         this.elements.totalPages.textContent = totalPages || 1;
         
-        this.elements.prevPage.disabled = this.state.currentPage <= 1;
+        this.elements.prevPage.disabled = this.state.currentPage <= 1 || totalPages === 0;
         this.elements.nextPage.disabled = this.state.currentPage >= totalPages || totalPages === 0;
     }
 
@@ -729,6 +785,8 @@ class Dashboard {
         // Ordenação da tabela
         document.querySelectorAll('.data-table th[data-sort]').forEach(th => {
             th.addEventListener('click', () => {
+                if (!this.state.hasData) return;
+                
                 const field = th.dataset.sort;
                 const direction = this.state.sortConfig.field === field && this.state.sortConfig.direction === 'asc' ? 'desc' : 'asc';
                 
@@ -745,11 +803,9 @@ class Dashboard {
         });
         
         this.elements.timelineRange.addEventListener('change', () => {
-            // Sincronizar com filtro de período
             const value = this.elements.timelineRange.value;
             this.state.filters.periodo = value;
             
-            // Atualizar texto do período
             this.updatePeriodText(value);
             
             this.state.currentPage = 1;
@@ -767,6 +823,56 @@ class Dashboard {
         periodSelector.addEventListener('click', () => {
             this.showPeriodSelector();
         });
+        
+        // Botão de tentar novamente
+        this.elements.retryBtn.addEventListener('click', () => {
+            this.retryLoad();
+        });
+    }
+
+    enableControls(enabled) {
+        this.elements.exportBtn.disabled = !enabled;
+        this.elements.searchInput.disabled = !enabled;
+        this.elements.fabricanteFilter.disabled = !enabled;
+        this.elements.tecnicoFilter.disabled = !enabled;
+        this.elements.itemsPerPage.disabled = !enabled;
+        this.elements.chartType.disabled = !enabled;
+        this.elements.timelineRange.disabled = !enabled;
+        
+        if (enabled) {
+            this.elements.exportBtn.style.opacity = '1';
+            this.elements.exportBtn.style.cursor = 'pointer';
+        } else {
+            this.elements.exportBtn.style.opacity = '0.5';
+            this.elements.exportBtn.style.cursor = 'not-allowed';
+        }
+    }
+
+    showNoDataState() {
+        this.state.hasData = false;
+        this.enableControls(false);
+        
+        // Mostrar estado sem dados
+        this.elements.noDataState.style.display = 'block';
+        
+        // Esconder outras seções
+        this.elements.noDataState.scrollIntoView({ behavior: 'smooth' });
+        
+        // Mostrar notificação
+        this.showNotification('Nenhum dado encontrado na planilha. Verifique se há dados na planilha conectada.', 'info', 10000);
+    }
+
+    hideNoDataState() {
+        this.elements.noDataState.style.display = 'none';
+    }
+
+    retryLoad() {
+        this.showLoading();
+        this.hideNoDataState();
+        
+        setTimeout(async () => {
+            await this.init();
+        }, 1000);
     }
 
     updatePeriodText(value) {
@@ -799,6 +905,8 @@ class Dashboard {
     }
 
     showPeriodSelector() {
+        if (!this.state.hasData) return;
+        
         const periodos = [
             { dias: 1, label: 'Hoje' },
             { dias: 7, label: 'Últimos 7 dias' },
@@ -881,10 +989,8 @@ class Dashboard {
                 this.state.filters.periodo = dias;
                 this.state.currentPage = 1;
                 
-                // Atualizar texto do período
                 this.updatePeriodText(dias);
                 
-                // Sincronizar com gráfico
                 if (dias !== 'todos') {
                     this.elements.timelineRange.value = dias;
                 }
@@ -907,12 +1013,12 @@ class Dashboard {
     }
 
     exportData() {
-        const dataToExport = this.state.filteredData.length > 0 ? this.state.filteredData : this.state.data;
-        
-        if (dataToExport.length === 0) {
-            this.showNotification('Nenhum dado para exportar', 'warning');
+        if (!this.state.hasData || this.state.filteredData.length === 0) {
+            this.showNotification('Não há dados para exportar', 'warning');
             return;
         }
+        
+        const dataToExport = this.state.filteredData.length > 0 ? this.state.filteredData : this.state.data;
         
         // Criar CSV
         const headers = ['ID', 'Data', 'Placa', 'Modelo', 'Fabricante', 'Técnico', 'Status'];
@@ -921,7 +1027,7 @@ class Dashboard {
             ...dataToExport.map(item => [
                 item.id,
                 `"${this.formatDate(item.data)}"`,
-                `"${item.placa}"`,
+                `"${item.placa || ''}"`,
                 `"${item.modelo}"`,
                 `"${item.fabricante}"`,
                 `"${item.tecnico}"`,
@@ -949,7 +1055,7 @@ class Dashboard {
             search: '',
             fabricante: '',
             tecnico: '',
-            periodo: '1' // Padrão: Hoje
+            periodo: '1'
         };
         
         this.elements.searchInput.value = '';
@@ -963,6 +1069,8 @@ class Dashboard {
     }
 
     viewDetails(id) {
+        if (!this.state.hasData) return;
+        
         const item = this.state.data.find(d => d.id === id);
         if (!item) return;
         
@@ -1014,7 +1122,7 @@ class Dashboard {
                 </div>
                 <div>
                     <h4 style="color: #6c757d; font-size: 12px; margin-bottom: 5px;">PLACA</h4>
-                    <p style="font-size: 16px; font-weight: 500; color: #212529; font-family: monospace; background: #f8f9fa; padding: 8px 12px; border-radius: 6px;">${item.placa}</p>
+                    <p style="font-size: 16px; font-weight: 500; color: #212529; font-family: monospace; background: #f8f9fa; padding: 8px 12px; border-radius: 6px;">${item.placa || 'Não informada'}</p>
                 </div>
                 <div>
                     <h4 style="color: #6c757d; font-size: 12px; margin-bottom: 5px;">MODELO</h4>
@@ -1037,16 +1145,11 @@ class Dashboard {
                 </div>
             </div>
             
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 20px;">
-                <h4 style="color: #6c757d; font-size: 12px; margin-bottom: 10px;">AÇÕES RÁPIDAS</h4>
-                <div style="display: flex; gap: 10px;">
-                    <button onclick="dashboard.printChecklist(${item.id})" style="background: #0077b6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px;">
-                        <i class="fas fa-print"></i> Imprimir
-                    </button>
-                    <button onclick="dashboard.shareChecklist(${item.id})" style="background: #2a9d8f; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px;">
-                        <i class="fas fa-share"></i> Compartilhar
-                    </button>
-                </div>
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
+                <h4 style="color: #6c757d; font-size: 12px; margin-bottom: 10px;">DADOS ORIGINAIS DA PLANILHA</h4>
+                <pre style="background: white; padding: 15px; border-radius: 6px; font-size: 12px; max-height: 200px; overflow: auto; margin: 0;">
+${JSON.stringify(item.rawData, null, 2)}
+                </pre>
             </div>
         `;
         
@@ -1063,14 +1166,6 @@ class Dashboard {
                 overlay.remove();
             }
         });
-    }
-
-    printChecklist(id) {
-        this.showNotification('Função de impressão em desenvolvimento', 'info');
-    }
-
-    shareChecklist(id) {
-        this.showNotification('Função de compartilhamento em desenvolvimento', 'info');
     }
 
     formatDate(dateStr) {
@@ -1162,19 +1257,10 @@ class Dashboard {
     }
 
     handleError(error) {
-        this.showNotification(`Erro: ${error.message}`, 'error');
+        console.error('Erro:', error);
+        this.showNoDataState();
+        this.showNotification('Erro ao carregar dados da planilha: ' + error.message, 'error');
         this.hideLoading();
-        
-        // Usar dados de demonstração em caso de erro
-        const demoData = this.generateDemoData();
-        this.state.data = this.processData(demoData);
-        this.applyFilters();
-        this.updateUI();
-        
-        setTimeout(() => {
-            this.hideLoading();
-            this.showNotification('Carregando dados de demonstração', 'warning');
-        }, 500);
     }
 }
 
@@ -1182,7 +1268,7 @@ class Dashboard {
 let dashboard;
 document.addEventListener('DOMContentLoaded', () => {
     dashboard = new Dashboard();
-    window.dashboard = dashboard; // Expor globalmente para usar em onclick
+    window.dashboard = dashboard;
 });
 
 // Adicionar animação para slideOut

@@ -209,6 +209,13 @@
             box-shadow: 0 8px 24px rgba(0, 119, 182, 0.3);
         }
         
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: 0 4px 16px rgba(0, 119, 182, 0.2) !important;
+        }
+        
         /* Stats Grid */
         .stats-grid {
             display: grid;
@@ -368,6 +375,33 @@
             position: relative;
         }
         
+        .chart-no-data {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--text-secondary);
+            width: 100%;
+        }
+        
+        .chart-no-data i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.4;
+        }
+        
+        .chart-no-data p {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        
+        .chart-no-data small {
+            font-size: 13px;
+            opacity: 0.7;
+        }
+        
         /* Hoje Highlight */
         .today-highlight {
             background-color: rgba(0, 119, 182, 0.1);
@@ -507,6 +541,58 @@
             padding: 18px 20px;
             color: var(--text-primary);
             font-size: 14px;
+        }
+        
+        /* Estado Sem Dados */
+        .no-data-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: var(--light-bg);
+            border-radius: var(--radius-md);
+            margin: 20px 0;
+        }
+        
+        .no-data-state i {
+            font-size: 64px;
+            color: var(--border-color);
+            margin-bottom: 24px;
+            opacity: 0.6;
+        }
+        
+        .no-data-state h3 {
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            font-weight: 600;
+            font-size: 20px;
+        }
+        
+        .no-data-state p {
+            color: var(--text-secondary);
+            max-width: 500px;
+            margin: 0 auto 30px;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+        
+        .btn-retry {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-teal));
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: var(--transition);
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0, 119, 182, 0.2);
+        }
+        
+        .btn-retry:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 119, 182, 0.3);
         }
         
         /* Status Badges */
@@ -758,6 +844,14 @@
             
             .chart-wrapper {
                 height: 250px;
+            }
+            
+            .no-data-state {
+                padding: 40px 16px;
+            }
+            
+            .no-data-state i {
+                font-size: 48px;
             }
         }
         
@@ -1023,8 +1117,6 @@
                 <p>Sistema de Gestão Veicular</p>
             </div>
         </div>
-        
-        </div>
     </header>
 
     <!-- Main Content -->
@@ -1042,7 +1134,7 @@
                     <span id="period-text">Hoje</span>
                     <i class="fas fa-chevron-down"></i>
                 </div>
-                <button class="btn-primary" id="export-btn">
+                <button class="btn-primary" id="export-btn" disabled>
                     <i class="fas fa-download"></i> Exportar Dados
                 </button>
             </div>
@@ -1056,8 +1148,8 @@
                         <i class="fas fa-clipboard-check"></i>
                     </div>
                     <div class="stat-badge">
-                        <i class="fas fa-arrow-up"></i>
-                        12% vs anterior
+                        <i class="fas fa-info-circle"></i>
+                        Sem dados
                     </div>
                 </div>
                 <div class="stat-content">
@@ -1065,7 +1157,7 @@
                     <p id="total-checklists" class="stat-value">0</p>
                     <div class="stat-footer">
                         <i class="fas fa-history"></i>
-                        <span>Atualizado há poucos segundos</span>
+                        <span>Aguardando dados da planilha</span>
                     </div>
                 </div>
             </div>
@@ -1074,10 +1166,6 @@
                 <div class="stat-header">
                     <div class="stat-icon">
                         <i class="fas fa-industry"></i>
-                    </div>
-                    <div class="stat-badge">
-                        <i class="fas fa-plus"></i>
-                        3 novos
                     </div>
                 </div>
                 <div class="stat-content">
@@ -1129,7 +1217,7 @@
                 <div class="chart-header">
                     <h3><i class="fas fa-chart-bar"></i> Checklists por Modelo</h3>
                     <div class="chart-options">
-                        <select id="chart-type" class="chart-select">
+                        <select id="chart-type" class="chart-select" disabled>
                             <option value="bar">Gráfico de Barras</option>
                             <option value="line">Gráfico de Linhas</option>
                             <option value="pie">Gráfico de Pizza</option>
@@ -1139,6 +1227,11 @@
                 </div>
                 <div class="chart-wrapper">
                     <canvas id="modelosChart"></canvas>
+                    <div class="chart-no-data" style="display: none;">
+                        <i class="fas fa-chart-bar"></i>
+                        <p>Sem dados para exibir</p>
+                        <small>Aguarde o carregamento dos dados</small>
+                    </div>
                 </div>
             </div>
             
@@ -1146,7 +1239,7 @@
                 <div class="chart-header">
                     <h3><i class="fas fa-calendar"></i> Checklist por Data</h3>
                     <div class="chart-options">
-                        <select id="timeline-range" class="chart-select">
+                        <select id="timeline-range" class="chart-select" disabled>
                             <option value="1" selected>Hoje</option>
                             <option value="7">7 dias</option>
                             <option value="15">15 dias</option>
@@ -1157,6 +1250,11 @@
                 </div>
                 <div class="chart-wrapper">
                     <canvas id="timelineChart"></canvas>
+                    <div class="chart-no-data" style="display: none;">
+                        <i class="fas fa-chart-line"></i>
+                        <p>Sem dados para exibir</p>
+                        <small>Aguarde o carregamento dos dados</small>
+                    </div>
                 </div>
             </div>
         </section>
@@ -1169,18 +1267,18 @@
                 <div class="table-tools">
                     <div class="search-box">
                         <i class="fas fa-search"></i>
-                        <input type="text" id="search-input" placeholder="Buscar por placa, modelo ou técnico...">
+                        <input type="text" id="search-input" placeholder="Buscar por placa, modelo ou técnico..." disabled>
                     </div>
                     
-                    <select id="fabricante-filter" class="select-control">
+                    <select id="fabricante-filter" class="select-control" disabled>
                         <option value="">Todos fabricantes</option>
                     </select>
                     
-                    <select id="tecnico-filter" class="select-control">
+                    <select id="tecnico-filter" class="select-control" disabled>
                         <option value="">Todos técnicos</option>
                     </select>
                     
-                    <select id="items-per-page" class="select-control">
+                    <select id="items-per-page" class="select-control" disabled>
                         <option value="10">10 itens</option>
                         <option value="25" selected>25 itens</option>
                         <option value="50">50 itens</option>
@@ -1244,12 +1342,22 @@
                 </div>
             </div>
         </section>
+
+        <!-- Estado Sem Dados -->
+        <div class="no-data-state" id="no-data-state" style="display: none;">
+            <i class="fas fa-database"></i>
+            <h3>Sem dados disponíveis</h3>
+            <p>A planilha conectada não contém checklists ou está vazia. Adicione dados à sua planilha do Google Sheets e atualize esta página.</p>
+            <button class="btn-retry" id="retry-btn">
+                <i class="fas fa-sync-alt"></i> Tentar carregar novamente
+            </button>
+        </div>
     </main>
 
     <!-- Loading Overlay -->
     <div class="loading-overlay" id="loading-overlay">
         <div class="spinner"></div>
-        <p>Carregando dados...</p>
+        <p>Carregando dados da planilha...</p>
     </div>
 
     <script src="script.js"></script>
