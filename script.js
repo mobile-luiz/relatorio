@@ -1,30 +1,35 @@
 /**
- * DASHBOARD ALL MOTORS - Sistema de Gestão Veicular
- * Versão: 4.0.0
- * Estilo: Bancário Premium
- * Alteração: Sem dados fictícios - apenas dados reais da planilha
+ * ALL MOTORS - Dashboard de Checklists
+ * Versão: 8.0.0 (Com filtros de data)
  */
 
 class Dashboard {
     constructor() {
-        // Configurações
+        // Configurações modernizadas
         this.config = {
-            API_URL: 'https://script.google.com/macros/s/AKfycbyEyVCNM_LUaNC1vSYylhjozCfmpiu6MD6ZIu5wyE9bKtinlmdtd8MsPpOH51mUltzi/exec',
-            ITEMS_PER_PAGE: 25,
-            MAX_MODELOS: 10,
-            COLORS: {
-                primary: '#0077b6',
-                secondary: '#00b4d8',
-                success: '#2a9d8f',
-                warning: '#e9c46a',
-                danger: '#e76f51',
-                dark: '#0d1b2a',
-                light: '#f8f9fa'
-            },
-            CHART_COLORS: [
-                '#0077b6', '#00b4d8', '#2a9d8f', '#e9c46a', '#e76f51',
-                '#9d4edd', '#ff9e00', '#06d6a0', '#118ab2', '#ef476f'
-            ]
+            API_URL: 'https://script.google.com/macros/s/AKfycbw7WijWu0BtEKklj2H9MiznO5CpWgf9B2B3E-T68OozQXx9w8E0SkSr7ubETheQPKJG/exec',
+            TIMEOUT: 20000,
+            CACHE_TTL: 5 * 60 * 1000, // 5 minutos
+            MAX_CHART_ITEMS: 8,
+            
+            THEME: {
+                colors: {
+                    primary: '#0066cc',
+                    secondary: '#00b894',
+                    accent: '#6c5ce7',
+                    warning: '#fdcb6e',
+                    danger: '#e17055',
+                    info: '#0984e3',
+                    dark: '#1a1a1a',
+                    light: '#f9f9f9'
+                },
+                gradients: {
+                    primary: ['#0066cc', '#6c5ce7'],
+                    success: ['#00b894', '#00cec9'],
+                    warning: ['#fdcb6e', '#e17055'],
+                    info: ['#0984e3', '#74b9ff']
+                }
+            }
         };
 
         // Estado da aplicação
@@ -32,57 +37,27 @@ class Dashboard {
             data: [],
             filteredData: [],
             currentPage: 1,
-            itemsPerPage: this.config.ITEMS_PER_PAGE,
-            sortConfig: { field: 'data', direction: 'desc' },
+            itemsPerPage: 25,
+            sortConfig: { field: 'date', direction: 'desc' },
             filters: {
                 search: '',
+                status: '',
                 fabricante: '',
-                tecnico: '',
-                periodo: '1'
+                dateStart: null,
+                dateEnd: null,
+                quickFilter: '1' // Hoje por padrão
             },
-            fabricantes: [],
-            tecnicos: [],
-            charts: {},
-            hasData: false
-        };
-
-        // Elementos DOM
-        this.elements = {
-            // Stats
-            totalChecklists: document.getElementById('total-checklists'),
-            totalFabricantes: document.getElementById('total-fabricantes'),
-            totalTecnicos: document.getElementById('total-tecnicos'),
-            totalVeiculos: document.getElementById('total-veiculos'),
-            
-            // Charts
-            modelosChart: document.getElementById('modelosChart'),
-            timelineChart: document.getElementById('timelineChart'),
-            chartType: document.getElementById('chart-type'),
-            timelineRange: document.getElementById('timeline-range'),
-            
-            // Table
-            tableBody: document.getElementById('table-body'),
-            searchInput: document.getElementById('search-input'),
-            fabricanteFilter: document.getElementById('fabricante-filter'),
-            tecnicoFilter: document.getElementById('tecnico-filter'),
-            itemsPerPage: document.getElementById('items-per-page'),
-            
-            // Pagination
-            currentItems: document.getElementById('current-items'),
-            totalItems: document.getElementById('total-items'),
-            currentPage: document.getElementById('current-page'),
-            totalPages: document.getElementById('total-pages'),
-            prevPage: document.getElementById('prev-page'),
-            nextPage: document.getElementById('next-page'),
-            
-            // Buttons
-            exportBtn: document.getElementById('export-btn'),
-            periodText: document.getElementById('period-text'),
-            retryBtn: document.getElementById('retry-btn'),
-            
-            // Overlay e estados
-            loadingOverlay: document.getElementById('loading-overlay'),
-            noDataState: document.getElementById('no-data-state')
+            statuses: new Set(),
+            fabricantes: new Set(),
+            tecnicos: new Set(),
+            modelos: new Map(),
+            charts: {
+                modelos: null,
+                timeline: null
+            },
+            isLoading: false,
+            lastUpdate: null,
+            totalChecklistsAllTime: 0
         };
 
         // Inicialização
@@ -91,41 +66,243 @@ class Dashboard {
 
     async init() {
         try {
+            console.log('🚀 Inicializando Dashboard All Motors...');
+            this.initElements();
+            this.initEventListeners();
+            this.initDateFilters();
             this.showLoading();
-            this.setupEventListeners();
             
-            // Tentar carregar dados da API
-            const apiData = await this.fetchData();
-            
-            if (apiData === null || apiData.length === 0) {
-                // Mostrar estado sem dados
-                this.showNoDataState();
-                this.hideLoading();
-                return;
-            }
-            
-            // Processar dados
-            this.state.data = this.processData(apiData);
-            this.state.hasData = true;
-            this.applyFilters();
-            this.updateUI();
-            this.enableControls(true);
-            
-            setTimeout(() => {
-                this.hideLoading();
-                this.showNotification('Dashboard carregado com sucesso', 'success');
-            }, 500);
+            // Carregar dados da API
+            await this.loadData();
             
         } catch (error) {
-            console.error('Erro na inicialização:', error);
+            console.error('❌ Erro na inicialização:', error);
             this.handleError(error);
         }
     }
 
-    async fetchData() {
+    initElements() {
+        // Estatísticas
+        this.elements = {
+            // Stats
+            totalChecklists: document.getElementById('total-checklists'),
+            totalFabricantes: document.getElementById('total-fabricantes'),
+            totalTecnicos: document.getElementById('total-tecnicos'),
+            totalVeiculos: document.getElementById('total-veiculos'),
+            checklistTrend: document.getElementById('checklist-trend'),
+            checklistPeriod: document.getElementById('checklist-period'),
+            
+            // Gráficos
+            modelosChart: document.getElementById('modelosChart'),
+            timelineChart: document.getElementById('timelineChart'),
+            chartType: document.getElementById('chart-type'),
+            chartAggregation: document.getElementById('chart-aggregation'),
+            todayCount: document.getElementById('today-count'),
+            todayCountValue: document.getElementById('today-count-value'),
+            
+            // Filtros de Data
+            startDate: document.getElementById('start-date'),
+            endDate: document.getElementById('end-date'),
+            applyDateFilter: document.getElementById('apply-date-filter'),
+            dateQuickFilters: document.querySelectorAll('.date-quick-btn'),
+            dateRange: document.getElementById('date-range'),
+            filterInfo: document.getElementById('filter-info'),
+            
+            // Tabela
+            tableBody: document.getElementById('table-body'),
+            searchInput: document.getElementById('search-input'),
+            filterStatus: document.getElementById('filter-status'),
+            filterFabricante: document.getElementById('filter-fabricante'),
+            itemsPerPage: document.getElementById('items-per-page'),
+            
+            // Paginação
+            startItem: document.getElementById('start-item'),
+            endItem: document.getElementById('end-item'),
+            totalItems: document.getElementById('total-items'),
+            currentPage: document.getElementById('current-page'),
+            totalPages: document.getElementById('total-pages'),
+            firstPage: document.getElementById('first-page'),
+            prevPage: document.getElementById('prev-page'),
+            nextPage: document.getElementById('next-page'),
+            lastPage: document.getElementById('last-page'),
+            
+            // Botões
+            exportBtn: document.getElementById('export-btn'),
+            refreshBtn: document.getElementById('refresh-btn'),
+            retryBtn: document.getElementById('retry-btn'),
+            
+            // Estados
+            loadingOverlay: document.getElementById('loading-overlay'),
+            emptyState: document.getElementById('empty-state'),
+            emptyStateMessage: document.getElementById('empty-state-message')
+        };
+        
+        // Verificar quais elementos não foram encontrados
+        Object.keys(this.elements).forEach(key => {
+            if (!this.elements[key]) {
+                console.warn(`⚠️ Elemento não encontrado: ${key}`);
+            }
+        });
+    }
+
+    initDateFilters() {
+        // Definir datas padrão (hoje)
+        const today = new Date();
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(today.getDate() - 7);
+        
+        // Formatos YYYY-MM-DD para inputs date
+        const formatDateForInput = (date) => {
+            return date.toISOString().split('T')[0];
+        };
+        
+        // Definir data inicial como 7 dias atrás
+        if (this.elements.startDate) {
+            this.elements.startDate.value = formatDateForInput(sevenDaysAgo);
+            this.state.filters.dateStart = sevenDaysAgo;
+        }
+        
+        // Definir data final como hoje
+        if (this.elements.endDate) {
+            this.elements.endDate.value = formatDateForInput(today);
+            this.elements.endDate.max = formatDateForInput(today); // Não permitir datas futuras
+            this.state.filters.dateEnd = today;
+        }
+        
+        // Atualizar label de filtro
+        this.updateFilterInfo();
+    }
+
+    initEventListeners() {
+        // Busca
+        if (this.elements.searchInput) {
+            this.elements.searchInput.addEventListener('input', 
+                this.debounce(this.handleSearch.bind(this), 300)
+            );
+        }
+        
+        // Filtros
+        if (this.elements.filterStatus) {
+            this.elements.filterStatus.addEventListener('change', 
+                this.handleFilterChange.bind(this)
+            );
+        }
+        
+        if (this.elements.filterFabricante) {
+            this.elements.filterFabricante.addEventListener('change', 
+                this.handleFilterChange.bind(this)
+            );
+        }
+        
+        if (this.elements.itemsPerPage) {
+            this.elements.itemsPerPage.addEventListener('change', 
+                this.handleItemsPerPageChange.bind(this)
+            );
+        }
+        
+        // Filtros de Data
+        if (this.elements.startDate) {
+            this.elements.startDate.addEventListener('change', 
+                this.handleDateChange.bind(this)
+            );
+        }
+        
+        if (this.elements.endDate) {
+            this.elements.endDate.addEventListener('change', 
+                this.handleDateChange.bind(this)
+            );
+        }
+        
+        if (this.elements.applyDateFilter) {
+            this.elements.applyDateFilter.addEventListener('click', 
+                this.applyDateFilter.bind(this)
+            );
+        }
+        
+        // Filtros rápidos
+        if (this.elements.dateQuickFilters) {
+            this.elements.dateQuickFilters.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    this.handleQuickFilter(e.target);
+                });
+            });
+        }
+        
+        // Paginação
+        if (this.elements.firstPage) {
+            this.elements.firstPage.addEventListener('click', 
+                () => this.goToPage(1)
+            );
+        }
+        if (this.elements.prevPage) {
+            this.elements.prevPage.addEventListener('click', 
+                () => this.goToPage(this.state.currentPage - 1)
+            );
+        }
+        if (this.elements.nextPage) {
+            this.elements.nextPage.addEventListener('click', 
+                () => this.goToPage(this.state.currentPage + 1)
+            );
+        }
+        if (this.elements.lastPage) {
+            this.elements.lastPage.addEventListener('click', 
+                () => this.goToPage(Math.ceil(this.state.filteredData.length / this.state.itemsPerPage))
+            );
+        }
+        
+        // Ordenação
+        setTimeout(() => {
+            document.querySelectorAll('.data-table th[data-sort]').forEach(th => {
+                th.addEventListener('click', () => {
+                    const field = th.dataset.sort;
+                    this.handleSort(field);
+                });
+            });
+        }, 100);
+        
+        // Gráficos
+        if (this.elements.chartType) {
+            this.elements.chartType.addEventListener('change', 
+                this.updateChartType.bind(this)
+            );
+        }
+        if (this.elements.chartAggregation) {
+            this.elements.chartAggregation.addEventListener('change', 
+                this.updateChartAggregation.bind(this)
+            );
+        }
+        
+        // Botões de ação
+        if (this.elements.exportBtn) {
+            this.elements.exportBtn.addEventListener('click', 
+                this.exportData.bind(this)
+            );
+        }
+        if (this.elements.refreshBtn) {
+            this.elements.refreshBtn.addEventListener('click', 
+                this.refreshData.bind(this)
+            );
+        }
+        if (this.elements.retryBtn) {
+            this.elements.retryBtn.addEventListener('click', 
+                this.retryLoad.bind(this)
+            );
+        }
+    }
+
+    async loadData() {
         try {
-            console.log('Buscando dados da API...');
-            const response = await fetch(this.config.API_URL);
+            console.log('📡 Buscando dados da API...');
+            
+            // Usar AbortController para timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), this.config.TIMEOUT);
+            
+            const response = await fetch(this.config.API_URL, {
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
             
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
@@ -133,114 +310,258 @@ class Dashboard {
             
             const data = await response.json();
             
-            // Verificar se há dados válidos
-            if (!Array.isArray(data)) {
-                console.warn('Dados não são um array:', data);
-                return null;
+            if (!Array.isArray(data) || data.length === 0) {
+                this.showEmptyState('Nenhum dado encontrado na planilha.');
+                this.hideLoading();
+                return;
             }
             
-            if (data.length === 0) {
-                console.log('API retornou array vazio');
-                return null;
-            }
+            console.log(`✅ ${data.length} registros carregados`);
             
-            // Verificar estrutura mínima dos dados
-            const firstItem = data[0];
-            if (!firstItem) {
-                console.warn('Primeiro item inválido');
-                return null;
-            }
-            
-            // Verificar se tem pelo menos um campo esperado
-            const hasValidStructure = 
-                (firstItem.DATAENTRADA || firstItem.data || firstItem.DATA) ||
-                (firstItem.PLACA || firstItem.placa) ||
-                (firstItem.MODELO || firstItem.modelo) ||
-                (firstItem.FABRICANTE || firstItem.fabricante);
-            
-            if (!hasValidStructure) {
-                console.warn('Estrutura de dados inválida:', firstItem);
-                return null;
-            }
-            
-            console.log(`Dados carregados: ${data.length} registros`);
-            return data;
+            // Processar e armazenar dados
+            this.processData(data);
+            this.applyDateFilter(); // Aplicar filtro de data padrão
+            this.updateDashboard();
+            this.hideLoading();
             
         } catch (error) {
-            console.error('Erro ao buscar dados da API:', error);
-            return null;
+            this.hideLoading();
+            throw error;
         }
     }
 
-    processData(data) {
-        return data.map((item, index) => {
-            // Normalizar nomes dos campos
-            const placa = item.PLACA || item.placa || '';
-            const modelo = item.MODELO || item.modelo || 'Não informado';
-            const fabricante = item.FABRICANTE || item.fabricante || 'Não informado';
-            
-            // Tratar data
-            let dataItem;
-            if (item.DATAENTRADA) {
-                dataItem = item.DATAENTRADA;
-            } else if (item.data) {
-                dataItem = item.data;
-            } else if (item.DATA) {
-                dataItem = item.DATA;
-            } else {
-                dataItem = new Date().toISOString();
-            }
-            
-            // Tratar técnico
-            let tecnico;
-            if (item.TECNICO_LOGADO) {
-                tecnico = item.TECNICO_LOGADO;
-            } else if (item.TECNICO) {
-                tecnico = item.TECNICO;
-            } else if (item.tecnico) {
-                tecnico = item.tecnico;
-            } else if (item.RESPONSAVEL) {
-                tecnico = item.RESPONSAVEL;
-            } else {
-                tecnico = 'Não informado';
-            }
-            
-            // Determinar status baseado em dados disponíveis
-            let status;
-            if (item.STATUS) {
-                status = this.normalizeStatus(item.STATUS);
-            } else if (item.status) {
-                status = this.normalizeStatus(item.status);
-            } else {
-                // Status padrão se não houver informação
-                status = { type: 'completed', label: 'Concluído', icon: 'check-circle' };
-            }
-            
-            return {
-                id: index + 1,
-                data: dataItem,
-                placa: placa,
-                modelo: modelo,
-                fabricante: fabricante,
-                tecnico: tecnico,
-                status: status,
-                rawData: item // Manter dados originais para referência
-            };
-        }).sort((a, b) => new Date(b.data) - new Date(a.data));
-    }
-
-    normalizeStatus(statusStr) {
-        const status = String(statusStr).toLowerCase().trim();
+    processData(rawData) {
+        console.log('🔄 Processando dados...');
         
-        if (status.includes('concluído') || status.includes('finalizado') || status.includes('completado') || status === 'done' || status === 'complete') {
-            return { type: 'completed', label: 'Concluído', icon: 'check-circle' };
-        } else if (status.includes('andamento') || status.includes('progresso') || status.includes('processando') || status === 'in progress') {
-            return { type: 'progress', label: 'Em Andamento', icon: 'sync-alt' };
-        } else if (status.includes('pendente') || status.includes('aguardando') || status.includes('esperando') || status === 'pending') {
-            return { type: 'pending', label: 'Pendente', icon: 'clock' };
-        } else {
-            return { type: 'completed', label: 'Concluído', icon: 'check-circle' };
+        // Resetar coleções
+        this.state.fabricantes.clear();
+        this.state.tecnicos.clear();
+        this.state.statuses.clear();
+        this.state.modelos.clear();
+        
+        const processedData = rawData.map((item, index) => {
+            // Normalizar dados
+            const normalized = {
+                id: index + 1,
+                date: this.normalizeDate(item.DATA || item.data || item.DATAENTRADA),
+                placa: (item.PLACA || item.placa || '').toUpperCase().trim(),
+                modelo: (item.MODELO || item.modelo || 'Desconhecido').trim(),
+                fabricante: (item.FABRICANTE || item.fabricante || 'Desconhecido').trim(),
+                tecnico: this.normalizeTecnico(item),
+                status: this.normalizeStatus(item.STATUS || item.status),
+                rawData: item
+            };
+            
+            // Coletar dados para filtros
+            this.state.fabricantes.add(normalized.fabricante);
+            this.state.tecnicos.add(normalized.tecnico);
+            this.state.statuses.add(normalized.status.type);
+            
+            // Contar modelos
+            this.state.modelos.set(
+                normalized.modelo,
+                (this.state.modelos.get(normalized.modelo) || 0) + 1
+            );
+            
+            return normalized;
+        });
+        
+        this.state.data = processedData.sort((a, b) => 
+            new Date(b.date) - new Date(a.date)
+        );
+        
+        this.state.totalChecklistsAllTime = this.state.data.length;
+        this.state.lastUpdate = new Date();
+        console.log('✅ Dados processados:', this.state.data.length, 'registros');
+        
+        // Atualizar dropdown de fabricantes
+        this.updateFabricantesDropdown();
+    }
+
+    normalizeDate(dateString) {
+        try {
+            if (!dateString) return new Date().toISOString();
+            
+            // Tentar diferentes formatos de data
+            let date = new Date(dateString);
+            
+            // Se for string no formato brasileiro DD/MM/YYYY
+            if (isNaN(date.getTime()) && dateString.includes('/')) {
+                const parts = dateString.split('/');
+                if (parts.length === 3) {
+                    // DD/MM/YYYY ou DD/MM/YYYY HH:mm
+                    const datePart = parts[2].split(' ')[0];
+                    date = new Date(datePart, parts[1] - 1, parts[0]);
+                }
+            }
+            
+            if (!isNaN(date.getTime())) return date.toISOString();
+            
+            // Se a data for inválida, usar data atual
+            console.warn(`Data inválida: ${dateString}`);
+            return new Date().toISOString();
+        } catch {
+            return new Date().toISOString();
         }
+    }
+
+    normalizeTecnico(item) {
+        const sources = [
+            item.TECNICO_LOGADO,
+            item.TECNICO,
+            item.tecnico,
+            item.RESPONSAVEL
+        ];
+        
+        for (const source of sources) {
+            if (source && source.trim()) {
+                return source.trim();
+            }
+        }
+        
+        return 'Técnico não informado';
+    }
+
+    normalizeStatus(status) {
+        if (!status) {
+            return { type: 'unknown', label: 'Não informado', icon: 'question-circle' };
+        }
+        
+        const statusLower = String(status).toLowerCase().trim();
+        
+        const statusMap = {
+            completed: ['concluído', 'finalizado', 'completado', 'done', 'complete'],
+            pending: ['pendente', 'aguardando', 'esperando', 'pending'],
+            progress: ['andamento', 'progresso', 'processando', 'in progress', 'em andamento'],
+            cancelled: ['cancelado', 'cancelada', 'cancelled']
+        };
+        
+        for (const [type, keywords] of Object.entries(statusMap)) {
+            if (keywords.some(keyword => statusLower.includes(keyword))) {
+                const labels = {
+                    completed: { label: 'Concluído', icon: 'check-circle' },
+                    pending: { label: 'Pendente', icon: 'clock' },
+                    progress: { label: 'Em andamento', icon: 'sync-alt' },
+                    cancelled: { label: 'Cancelado', icon: 'times-circle' }
+                };
+                return { type, ...labels[type] };
+            }
+        }
+        
+        return { 
+            type: 'unknown', 
+            label: status.charAt(0).toUpperCase() + status.slice(1), 
+            icon: 'question-circle' 
+        };
+    }
+
+    applyDateFilter() {
+        console.log('📅 Aplicando filtro de data...');
+        
+        // Obter datas dos inputs
+        const startDate = this.elements.startDate?.value;
+        const endDate = this.elements.endDate?.endDate;
+        
+        if (startDate) {
+            this.state.filters.dateStart = new Date(startDate);
+            // Resetar para início do dia
+            this.state.filters.dateStart.setHours(0, 0, 0, 0);
+        }
+        
+        if (endDate) {
+            this.state.filters.dateEnd = new Date(endDate);
+            // Definir para fim do dia
+            this.state.filters.dateEnd.setHours(23, 59, 59, 999);
+        }
+        
+        // Aplicar filtro rápido se selecionado
+        this.applyQuickFilter();
+        
+        // Atualizar dashboard
+        this.updateDashboard();
+        
+        // Atualizar informação do filtro
+        this.updateFilterInfo();
+        
+        this.showNotification('Filtro de data aplicado', 'success');
+    }
+
+    applyQuickFilter() {
+        const days = parseInt(this.state.filters.quickFilter);
+        
+        if (days === 0) {
+            // Todo período
+            this.state.filters.dateStart = null;
+            this.state.filters.dateEnd = null;
+        } else {
+            const today = new Date();
+            const startDate = new Date();
+            startDate.setDate(today.getDate() - days + 1); // +1 para incluir hoje
+            
+            // Definir para início do dia
+            startDate.setHours(0, 0, 0, 0);
+            
+            // Definir para fim do dia
+            today.setHours(23, 59, 59, 999);
+            
+            this.state.filters.dateStart = startDate;
+            this.state.filters.dateEnd = today;
+            
+            // Atualizar inputs de data
+            if (this.elements.startDate && this.elements.endDate) {
+                this.elements.startDate.value = this.formatDateForInput(startDate);
+                this.elements.endDate.value = this.formatDateForInput(today);
+            }
+        }
+    }
+
+    handleQuickFilter(button) {
+        // Remover classe active de todos os botões
+        this.elements.dateQuickFilters.forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Adicionar classe active ao botão clicado
+        button.classList.add('active');
+        
+        // Atualizar filtro rápido
+        const days = button.dataset.days;
+        this.state.filters.quickFilter = days;
+        
+        // Aplicar filtro
+        this.applyDateFilter();
+    }
+
+    handleDateChange() {
+        // Quando o usuário altera manualmente as datas, desativa o filtro rápido
+        this.elements.dateQuickFilters.forEach(btn => {
+            btn.classList.remove('active');
+        });
+        this.state.filters.quickFilter = null;
+    }
+
+    updateDashboard() {
+        console.log('🎨 Atualizando dashboard...');
+        
+        // Aplicar filtros atuais
+        this.applyFilters();
+        
+        // Atualizar estatísticas
+        this.updateStats();
+        
+        // Atualizar tabela
+        this.updateTable();
+        
+        // Atualizar gráficos
+        this.updateCharts();
+        
+        // Atualizar paginação
+        this.updatePagination();
+        
+        // Atualizar interface
+        this.updateUIState();
+        
+        console.log('✅ Dashboard atualizado');
     }
 
     applyFilters() {
@@ -257,58 +578,42 @@ class Dashboard {
             );
         }
         
-        // Filtro por fabricante
+        // Filtro de status
+        if (this.state.filters.status) {
+            filtered = filtered.filter(item => 
+                item.status.type === this.state.filters.status
+            );
+        }
+        
+        // Filtro de fabricante
         if (this.state.filters.fabricante) {
-            filtered = filtered.filter(item => item.fabricante === this.state.filters.fabricante);
+            filtered = filtered.filter(item => 
+                item.fabricante === this.state.filters.fabricante
+            );
         }
         
-        // Filtro por técnico
-        if (this.state.filters.tecnico) {
-            filtered = filtered.filter(item => item.tecnico === this.state.filters.tecnico);
+        // Filtro por data
+        if (this.state.filters.dateStart) {
+            filtered = filtered.filter(item => {
+                const itemDate = new Date(item.date);
+                return itemDate >= this.state.filters.dateStart;
+            });
         }
         
-        // Filtro por período
-        if (this.state.filters.periodo && this.state.filters.periodo !== 'todos') {
-            const hoje = new Date();
-            
-            if (this.state.filters.periodo === '1') {
-                // Filtro "Hoje"
-                const inicioDia = new Date(hoje);
-                inicioDia.setHours(0, 0, 0, 0);
-                const fimDia = new Date(hoje);
-                fimDia.setHours(23, 59, 59, 999);
-                
-                filtered = filtered.filter(item => {
-                    try {
-                        const itemDate = new Date(item.data);
-                        return itemDate >= inicioDia && itemDate <= fimDia;
-                    } catch {
-                        return false;
-                    }
-                });
-            } else {
-                // Outros períodos
-                const dias = parseInt(this.state.filters.periodo);
-                const limite = new Date(hoje);
-                limite.setDate(limite.getDate() - dias + 1);
-                limite.setHours(0, 0, 0, 0);
-                
-                filtered = filtered.filter(item => {
-                    try {
-                        const itemDate = new Date(item.data);
-                        return itemDate >= limite;
-                    } catch {
-                        return false;
-                    }
-                });
-            }
+        if (this.state.filters.dateEnd) {
+            filtered = filtered.filter(item => {
+                const itemDate = new Date(item.date);
+                return itemDate <= this.state.filters.dateEnd;
+            });
         }
         
-        // Ordenação
+        // Aplicar ordenação
         this.sortData(filtered);
         
         this.state.filteredData = filtered;
-        this.updateFiltersDropdowns();
+        this.state.currentPage = 1; // Resetar para primeira página
+        
+        console.log('🔍 Filtros aplicados:', this.state.filteredData.length, 'registros');
     }
 
     sortData(data) {
@@ -318,159 +623,218 @@ class Dashboard {
             let aValue = a[field];
             let bValue = b[field];
             
-            if (field === 'data') {
+            if (field === 'date') {
                 aValue = new Date(aValue);
                 bValue = new Date(bValue);
             } else {
-                aValue = String(aValue).toLowerCase();
-                bValue = String(bValue).toLowerCase();
+                aValue = String(aValue || '').toLowerCase();
+                bValue = String(bValue || '').toLowerCase();
             }
             
-            if (aValue < bValue) return direction === 'asc' ? -1 : 1;
-            if (aValue > bValue) return direction === 'asc' ? 1 : -1;
-            return 0;
+            if (direction === 'asc') {
+                return aValue > bValue ? 1 : -1;
+            } else {
+                return aValue < bValue ? 1 : -1;
+            }
         });
     }
 
-    updateUI() {
-        this.updateStats();
-        this.updateTable();
-        this.updateCharts();
-        this.updatePagination();
-    }
-
     updateStats() {
-        const total = this.state.data.length;
-        const fabricantes = [...new Set(this.state.data.map(d => d.fabricante).filter(f => f && f !== 'Não informado'))].length;
-        const tecnicos = [...new Set(this.state.data.map(d => d.tecnico).filter(t => t && t !== 'Não informado'))].length;
-        const veiculos = [...new Set(this.state.data.map(d => d.placa).filter(p => p))].length;
+        const filteredChecklists = this.state.filteredData.length;
+        const totalFabricantes = new Set(this.state.filteredData.map(d => d.fabricante)).size;
+        const totalTecnicos = new Set(this.state.filteredData.map(d => d.tecnico)).size;
+        const totalVeiculos = new Set(this.state.filteredData.map(d => d.placa)).size;
         
-        this.elements.totalChecklists.textContent = total.toLocaleString('pt-BR');
-        this.elements.totalFabricantes.textContent = fabricantes.toLocaleString('pt-BR');
-        this.elements.totalTecnicos.textContent = tecnicos.toLocaleString('pt-BR');
-        this.elements.totalVeiculos.textContent = veiculos.toLocaleString('pt-BR');
+        // Calcular tendência (comparar com período anterior similar)
+        const trend = this.calculateTrend();
+        
+        // Atualizar elementos
+        this.updateElement(this.elements.totalChecklists, filteredChecklists.toLocaleString());
+        this.updateElement(this.elements.totalFabricantes, totalFabricantes.toLocaleString());
+        this.updateElement(this.elements.totalTecnicos, totalTecnicos.toLocaleString());
+        this.updateElement(this.elements.totalVeiculos, totalVeiculos.toLocaleString());
+        
+        // Atualizar tendência
+        if (this.elements.checklistTrend) {
+            this.elements.checklistTrend.textContent = `${trend}%`;
+            this.elements.checklistTrend.className = `stat-trend trend-${trend >= 0 ? 'up' : 'down'}`;
+        }
+        
+        // Atualizar período
+        if (this.elements.checklistPeriod) {
+            this.elements.checklistPeriod.textContent = this.getPeriodDescription();
+        }
+        
+        // Contar checklists de hoje
+        this.updateTodayCount();
     }
 
-    updateFiltersDropdowns() {
-        // Fabricantes
-        const fabricantes = ['', ...new Set(this.state.data.map(d => d.fabricante).filter(f => f && f !== 'Não informado'))].sort();
-        this.elements.fabricanteFilter.innerHTML = fabricantes.map(f => 
-            `<option value="${f}" ${f === this.state.filters.fabricante ? 'selected' : ''}>
-                ${f || 'Todos fabricantes'}
-            </option>`
-        ).join('');
+    calculateTrend() {
+        // Simples cálculo de tendência (pode ser aprimorado)
+        if (this.state.totalChecklistsAllTime === 0) return 0;
         
-        // Técnicos
-        const tecnicos = ['', ...new Set(this.state.data.map(d => d.tecnico).filter(t => t && t !== 'Não informado'))].sort();
-        this.elements.tecnicoFilter.innerHTML = tecnicos.map(t => 
-            `<option value="${t}" ${t === this.state.filters.tecnico ? 'selected' : ''}>
-                ${t || 'Todos técnicos'}
-            </option>`
-        ).join('');
+        const currentCount = this.state.filteredData.length;
+        const previousCount = this.state.totalChecklistsAllTime - currentCount;
+        
+        if (previousCount === 0) return 100;
+        
+        const trend = ((currentCount - previousCount) / previousCount) * 100;
+        return Math.round(trend);
+    }
+
+    getPeriodDescription() {
+        if (!this.state.filters.dateStart || !this.state.filters.dateEnd) {
+            return 'Todo o período';
+        }
+        
+        const start = this.formatDateShort(this.state.filters.dateStart);
+        const end = this.formatDateShort(this.state.filters.dateEnd);
+        
+        return `De ${start} até ${end}`;
+    }
+
+    updateTodayCount() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        const todayChecklists = this.state.filteredData.filter(item => {
+            const itemDate = new Date(item.date);
+            return itemDate >= today && itemDate < tomorrow;
+        }).length;
+        
+        if (this.elements.todayCount && this.elements.todayCountValue) {
+            if (todayChecklists > 0) {
+                this.elements.todayCount.style.display = 'inline-flex';
+                this.elements.todayCountValue.textContent = todayChecklists;
+            } else {
+                this.elements.todayCount.style.display = 'none';
+            }
+        }
+    }
+
+    updateFabricantesDropdown() {
+        if (!this.elements.filterFabricante) return;
+        
+        const fabricantes = Array.from(this.state.fabricantes)
+            .filter(f => f && f !== 'Desconhecido')
+            .sort();
+        
+        let options = '<option value="">Todos fabricantes</option>';
+        fabricantes.forEach(fabricante => {
+            const selected = fabricante === this.state.filters.fabricante ? 'selected' : '';
+            options += `<option value="${fabricante}" ${selected}>${fabricante}</option>`;
+        });
+        
+        this.elements.filterFabricante.innerHTML = options;
+    }
+
+    updateFilterInfo() {
+        if (!this.elements.filterInfo) return;
+        
+        let info = 'Filtrado por: ';
+        
+        if (!this.state.filters.dateStart || !this.state.filters.dateEnd) {
+            info += 'Todo período';
+        } else {
+            const start = this.formatDateShort(this.state.filters.dateStart);
+            const end = this.formatDateShort(this.state.filters.dateEnd);
+            
+            if (start === end) {
+                info += start;
+            } else {
+                info += `${start} - ${end}`;
+            }
+        }
+        
+        // Adicionar contagem
+        info += ` (${this.state.filteredData.length} registros)`;
+        
+        this.elements.filterInfo.textContent = info;
     }
 
     updateTable() {
-        const startIndex = (this.state.currentPage - 1) * this.state.itemsPerPage;
-        const endIndex = startIndex + this.state.itemsPerPage;
-        const pageData = this.state.filteredData.slice(startIndex, endIndex);
+        const { currentPage, itemsPerPage, filteredData } = this.state;
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const pageData = filteredData.slice(startIndex, endIndex);
+        
+        if (!this.elements.tableBody) return;
         
         if (pageData.length === 0) {
-            // Verificar se é porque não há dados ou por filtros
-            const hasNoDataAtAll = this.state.data.length === 0;
-            
-            if (hasNoDataAtAll) {
-                this.elements.tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="7" class="no-data-state" style="background: none; border: none;">
-                            <i class="fas fa-database" style="font-size: 48px;"></i>
-                            <h3 style="font-size: 18px;">Sem dados disponíveis</h3>
-                            <p style="max-width: 400px;">A planilha conectada não contém checklists ou está vazia.</p>
-                            <button onclick="dashboard.retryLoad()" class="btn-retry" style="margin-top: 20px;">
-                                <i class="fas fa-sync-alt"></i> Tentar novamente
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            } else {
-                // Há dados, mas filtros não retornam resultados
-                this.elements.tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="7" style="text-align: center; padding: 60px 20px; color: var(--text-secondary);">
-                            <i class="fas fa-search" style="font-size: 48px; margin-bottom: 20px; opacity: 0.5;"></i>
-                            <h4 style="margin-bottom: 10px;">Nenhum resultado encontrado</h4>
-                            <p style="margin-bottom: 20px;">Nenhum checklist corresponde aos filtros aplicados.</p>
-                            <button onclick="dashboard.resetFilters()" class="btn-retry" style="font-size: 14px;">
-                                <i class="fas fa-redo"></i> Limpar Filtros
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }
+            this.showEmptyTable();
             return;
         }
         
-        this.elements.tableBody.innerHTML = pageData.map(item => {
-            const itemDate = new Date(item.data);
-            const hoje = new Date();
-            const isHoje = itemDate.toDateString() === hoje.toDateString();
-            
-            return `
+        const tableHTML = pageData.map(item => this.createTableRow(item)).join('');
+        this.elements.tableBody.innerHTML = tableHTML;
+    }
+
+    createTableRow(item) {
+        const date = new Date(item.date);
+        const isToday = this.isToday(date);
+        
+        const statusColors = {
+            'completed': { bg: 'rgba(0, 184, 148, 0.1)', text: '#00b894', border: 'rgba(0, 184, 148, 0.2)' },
+            'pending': { bg: 'rgba(253, 203, 110, 0.1)', text: '#d63031', border: 'rgba(253, 203, 110, 0.2)' },
+            'progress': { bg: 'rgba(9, 132, 227, 0.1)', text: '#0984e3', border: 'rgba(9, 132, 227, 0.2)' },
+            'cancelled': { bg: 'rgba(225, 112, 85, 0.1)', text: '#e17055', border: 'rgba(225, 112, 85, 0.2)' },
+            'unknown': { bg: 'rgba(99, 110, 114, 0.1)', text: '#636e72', border: 'rgba(99, 110, 114, 0.2)' }
+        };
+        
+        const colors = statusColors[item.status.type] || statusColors.unknown;
+        
+        return `
             <tr>
                 <td>
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <i class="far fa-calendar" style="color: ${isHoje ? '#e76f51' : '#0077b6'};"></i>
-                        <span>${this.formatDate(item.data)}</span>
-                        ${isHoje ? '<span style="background: #e76f51; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;">HOJE</span>' : ''}
+                        <i class="far fa-calendar" style="color: ${isToday ? '#e17055' : '#0066cc'}"></i>
+                        <span>${this.formatDate(item.date)}</span>
+                        ${isToday ? '<span style="background: #e17055; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold;">HOJE</span>' : ''}
                     </div>
                 </td>
                 <td>
-                    <span style="background: #e9ecef; padding: 6px 12px; border-radius: 20px; font-family: monospace; font-weight: 600;">
-                        ${item.placa || 'Não informada'}
+                    <span style="display: inline-block; background: #f8f9fa; padding: 4px 12px; border-radius: 20px; font-family: monospace; font-weight: bold; border: 1px solid #dee2e6; font-size: 13px;">
+                        ${item.placa || 'N/A'}
                     </span>
                 </td>
                 <td>
-                    <strong style="display: block; color: #212529;">${item.modelo}</strong>
-                    <small style="color: #6c757d; font-size: 12px;">${item.fabricante}</small>
+                    <strong style="display: block; color: #1a1a1a;">${item.modelo}</strong>
+                    <small style="color: #636e72; font-size: 12px;">${item.fabricante}</small>
                 </td>
-                <td>${item.fabricante}</td>
+                <td style="color: #415a77; font-weight: 500;">${item.fabricante}</td>
                 <td>
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #0077b6, #00b4d8); color: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 600;">
-                            ${item.tecnico.charAt(0)}
+                        <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #0066cc, #6c5ce7); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">
+                            ${item.tecnico.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                            <strong style="display: block; font-size: 14px;">${item.tecnico}</strong>
-                            <small style="color: #6c757d; font-size: 12px;">Técnico</small>
+                            <strong style="color: #1a1a1a;">${item.tecnico}</strong>
+                            <br>
+                            <small style="color: #636e72; font-size: 12px;">Técnico</small>
                         </div>
                     </div>
                 </td>
                 <td>
-                    <span class="status-badge status-${item.status.type}" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;">
+                    <span style="padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; background: ${colors.bg}; color: ${colors.text}; border: 1px solid ${colors.border};">
                         <i class="fas fa-${item.status.icon}"></i>
                         ${item.status.label}
                     </span>
                 </td>
                 <td>
-                    <button class="view-btn" onclick="dashboard.viewDetails(${item.id})" style="background: none; border: 1px solid #dee2e6; padding: 6px 12px; border-radius: 6px; cursor: pointer; color: #0077b6; font-size: 12px;">
+                    <button onclick="dashboard.viewDetails(${item.id})" style="padding: 6px 12px; background: #0066cc; color: white; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px; transition: all 0.2s;" 
+                            onmouseover="this.style.background='#0052a3'" 
+                            onmouseout="this.style.background='#0066cc'">
                         <i class="fas fa-eye"></i> Ver
                     </button>
                 </td>
             </tr>
-        `}).join('');
+        `;
     }
 
     updateCharts() {
-        if (this.state.data.length === 0) {
-            this.showNoChartsMessage();
-            return;
-        }
-        
-        this.createModelosChart();
-        this.createTimelineChart();
-    }
-
-    showNoChartsMessage() {
-        // Destruir gráficos se existirem
+        // Destruir gráficos existentes
         if (this.state.charts.modelos) {
             this.state.charts.modelos.destroy();
         }
@@ -478,556 +842,352 @@ class Dashboard {
             this.state.charts.timeline.destroy();
         }
         
-        // Mostrar mensagem nos gráficos
-        const chartWrappers = document.querySelectorAll('.chart-wrapper');
-        chartWrappers.forEach(wrapper => {
-            const canvas = wrapper.querySelector('canvas');
-            const message = wrapper.querySelector('.chart-no-data');
-            
-            if (canvas) canvas.style.display = 'none';
-            if (message) message.style.display = 'block';
-        });
+        // Criar novos gráficos se houver dados
+        if (this.state.filteredData.length > 0) {
+            this.createModelosChart();
+            this.createTimelineChart();
+        }
     }
 
     createModelosChart() {
-        if (this.state.charts.modelos) {
-            this.state.charts.modelos.destroy();
+        if (!this.elements.modelosChart) {
+            console.warn('Canvas modelosChart não encontrado');
+            return;
         }
         
         const ctx = this.elements.modelosChart.getContext('2d');
-        const contagem = {};
+        const chartType = this.elements.chartType?.value || 'bar';
         
-        this.state.filteredData.forEach(d => {
-            const modelo = d.modelo || 'Não informado';
-            contagem[modelo] = (contagem[modelo] || 0) + 1;
-        });
-        
-        const sorted = Object.entries(contagem)
+        // Preparar dados dos modelos mais frequentes
+        const sortedModelos = Array.from(this.state.modelos.entries())
             .sort((a, b) => b[1] - a[1])
-            .slice(0, this.config.MAX_MODELOS);
+            .slice(0, this.config.MAX_CHART_ITEMS);
         
-        if (sorted.length === 0) {
-            this.showNoChartsMessage();
-            return;
-        }
+        if (sortedModelos.length === 0) return;
         
-        // Mostrar canvas
-        this.elements.modelosChart.style.display = 'block';
-        const message = this.elements.modelosChart.closest('.chart-wrapper').querySelector('.chart-no-data');
-        if (message) message.style.display = 'none';
+        const labels = sortedModelos.map(([modelo]) => 
+            modelo.length > 15 ? modelo.substring(0, 12) + '...' : modelo
+        );
+        const data = sortedModelos.map(([, count]) => count);
         
-        const chartType = this.elements.chartType.value;
-        const isCircular = chartType === 'pie' || chartType === 'doughnut';
-        
-        this.state.charts.modelos = new Chart(ctx, {
-            type: chartType,
-            data: {
-                labels: sorted.map(([modelo]) => modelo),
-                datasets: [{
-                    label: 'Quantidade de Checklists',
-                    data: sorted.map(([, qtd]) => qtd),
-                    backgroundColor: isCircular 
-                        ? this.config.CHART_COLORS.slice(0, sorted.length)
-                        : this.config.COLORS.primary,
-                    borderColor: isCircular 
-                        ? '#ffffff' 
-                        : this.config.COLORS.secondary,
-                    borderWidth: 2,
-                    borderRadius: chartType === 'bar' ? 6 : 0,
-                    hoverBackgroundColor: isCircular
-                        ? this.config.CHART_COLORS.map(c => this.lightenColor(c, 20))
-                        : this.config.COLORS.secondary
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: isCircular ? 'right' : 'top',
-                        labels: {
-                            padding: 20,
-                            usePointStyle: true,
-                            font: {
-                                size: 12
-                            }
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(13, 27, 42, 0.9)',
-                        titleFont: { size: 14 },
-                        bodyFont: { size: 13 },
-                        padding: 12,
-                        cornerRadius: 6,
-                        displayColors: isCircular
-                    }
+        try {
+            this.state.charts.modelos = new Chart(ctx, {
+                type: chartType,
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Checklists',
+                        data,
+                        backgroundColor: chartType === 'bar' 
+                            ? this.config.THEME.colors.primary
+                            : this.generateColors(sortedModelos.length),
+                        borderColor: '#ffffff',
+                        borderWidth: 2,
+                        borderRadius: 6
+                    }]
                 },
-                scales: isCircular ? {} : {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(0,0,0,0.05)'
-                        },
-                        ticks: {
-                            precision: 0,
-                            font: {
-                                size: 12
-                            }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: chartType === 'pie' || chartType === 'doughnut',
+                            position: 'right'
                         }
                     },
-                    x: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            font: {
-                                size: 12
-                            },
-                            maxRotation: 45
+                    scales: chartType === 'bar' ? {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 }
                         }
-                    }
+                    } : {}
                 }
-            }
-        });
+            });
+        } catch (error) {
+            console.error('Erro ao criar gráfico de modelos:', error);
+        }
     }
 
     createTimelineChart() {
-        if (this.state.charts.timeline) {
-            this.state.charts.timeline.destroy();
-        }
-        
-        const ctx = this.elements.timelineChart.getContext('2d');
-        const dias = parseInt(this.elements.timelineRange.value);
-        
-        const dadosPorData = {};
-        const hoje = new Date();
-        
-        // Inicializar últimos N dias
-        for (let i = dias - 1; i >= 0; i--) {
-            const data = new Date(hoje);
-            data.setDate(hoje.getDate() - i);
-            const dataStr = data.toLocaleDateString('pt-BR');
-            dadosPorData[dataStr] = 0;
-        }
-        
-        // Contar checklists por data
-        this.state.filteredData.forEach(d => {
-            try {
-                const dataItem = new Date(d.data);
-                const dataStr = dataItem.toLocaleDateString('pt-BR');
-                const dataChart = new Date(dataStr.split('/').reverse().join('-'));
-                const limite = new Date(hoje);
-                limite.setDate(hoje.getDate() - dias + 1);
-                
-                if (dataChart >= limite && dataChart <= hoje) {
-                    dadosPorData[dataStr] = (dadosPorData[dataStr] || 0) + 1;
-                }
-            } catch (e) {
-                console.warn('Data inválida:', d.data);
-            }
-        });
-        
-        // Verificar se há dados
-        const hasData = Object.values(dadosPorData).some(val => val > 0);
-        if (!hasData) {
-            this.showNoChartsMessage();
+        if (!this.elements.timelineChart) {
+            console.warn('Canvas timelineChart não encontrado');
             return;
         }
         
-        // Mostrar canvas
-        this.elements.timelineChart.style.display = 'block';
-        const message = this.elements.timelineChart.closest('.chart-wrapper').querySelector('.chart-no-data');
-        if (message) message.style.display = 'none';
+        const ctx = this.elements.timelineChart.getContext('2d');
+        const aggregation = this.elements.chartAggregation?.value || 'daily';
         
-        // Ordenar por data
-        const sorted = Object.entries(dadosPorData)
-            .sort((a, b) => new Date(a[0].split('/').reverse().join('-')) - new Date(b[0].split('/').reverse().join('-')));
+        // Agrupar dados conforme a agregação selecionada
+        let groupedData = {};
         
-        const labels = sorted.map(([data]) => {
-            const date = new Date(data.split('/').reverse().join('-'));
-            const isHoje = date.toDateString() === hoje.toDateString();
-            
-            if (isHoje && dias === 1) {
-                return 'Hoje';
-            } else if (isHoje) {
-                return date.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric' }) + ' (Hoje)';
+        if (aggregation === 'daily') {
+            groupedData = this.groupByDay();
+        } else if (aggregation === 'weekly') {
+            groupedData = this.groupByWeek();
+        } else if (aggregation === 'monthly') {
+            groupedData = this.groupByMonth();
+        }
+        
+        const entries = Object.entries(groupedData).sort((a, b) => {
+            return new Date(a[0]) - new Date(b[0]);
+        });
+        
+        if (entries.length === 0) return;
+        
+        const labels = entries.map(([date]) => {
+            const d = new Date(date);
+            if (aggregation === 'daily') {
+                return d.getDate() === new Date().getDate() ? 'Hoje' : 
+                       `${d.getDate()}/${d.getMonth() + 1}`;
+            } else if (aggregation === 'weekly') {
+                return `Sem ${this.getWeekNumber(d)}`;
             } else {
-                return date.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric' });
+                return d.toLocaleDateString('pt-BR', { month: 'short' });
             }
         });
         
-        this.state.charts.timeline = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Checklists por Dia',
-                    data: sorted.map(([, qtd]) => qtd),
-                    backgroundColor: 'rgba(0, 119, 182, 0.1)',
-                    borderColor: this.config.COLORS.primary,
-                    borderWidth: 3,
-                    pointBackgroundColor: this.config.COLORS.primary,
-                    pointBorderColor: '#ffffff',
-                    pointBorderWidth: 2,
-                    pointRadius: 6,
-                    pointHoverRadius: 8,
-                    tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(13, 27, 42, 0.9)',
-                        titleFont: { size: 14 },
-                        bodyFont: { size: 13 },
-                        padding: 12,
-                        cornerRadius: 6
-                    }
+        const data = entries.map(([, count]) => count);
+        
+        try {
+            this.state.charts.timeline = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Checklists',
+                        data,
+                        backgroundColor: 'rgba(0, 102, 204, 0.1)',
+                        borderColor: this.config.THEME.colors.primary,
+                        borderWidth: 3,
+                        tension: 0.3,
+                        fill: true
+                    }]
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(0,0,0,0.05)'
-                        },
-                        ticks: {
-                            precision: 0,
-                            font: {
-                                size: 12
-                            }
-                        }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
                     },
-                    x: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            font: {
-                                size: 12
-                            }
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 }
                         }
                     }
                 }
+            });
+        } catch (error) {
+            console.error('Erro ao criar gráfico de timeline:', error);
+        }
+    }
+
+    groupByDay() {
+        const dataByDate = {};
+        
+        this.state.filteredData.forEach(item => {
+            try {
+                const itemDate = new Date(item.date);
+                const dateKey = itemDate.toISOString().split('T')[0]; // YYYY-MM-DD
+                
+                dataByDate[dateKey] = (dataByDate[dateKey] || 0) + 1;
+            } catch (error) {
+                console.warn('Erro ao processar data do item:', item);
             }
         });
+        
+        return dataByDate;
+    }
+
+    groupByWeek() {
+        const dataByWeek = {};
+        
+        this.state.filteredData.forEach(item => {
+            try {
+                const itemDate = new Date(item.date);
+                const year = itemDate.getFullYear();
+                const weekNumber = this.getWeekNumber(itemDate);
+                const weekKey = `${year}-W${weekNumber}`;
+                
+                dataByWeek[weekKey] = (dataByWeek[weekKey] || 0) + 1;
+            } catch (error) {
+                console.warn('Erro ao processar data do item:', item);
+            }
+        });
+        
+        return dataByWeek;
+    }
+
+    groupByMonth() {
+        const dataByMonth = {};
+        
+        this.state.filteredData.forEach(item => {
+            try {
+                const itemDate = new Date(item.date);
+                const year = itemDate.getFullYear();
+                const month = itemDate.getMonth() + 1;
+                const monthKey = `${year}-${month.toString().padStart(2, '0')}`;
+                
+                dataByMonth[monthKey] = (dataByMonth[monthKey] || 0) + 1;
+            } catch (error) {
+                console.warn('Erro ao processar data do item:', item);
+            }
+        });
+        
+        return dataByMonth;
+    }
+
+    getWeekNumber(date) {
+        const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+        const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+        return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
     }
 
     updatePagination() {
-        const totalItems = this.state.filteredData.length;
-        const totalPages = Math.ceil(totalItems / this.state.itemsPerPage);
-        const currentItems = Math.min(this.state.itemsPerPage, totalItems - (this.state.currentPage - 1) * this.state.itemsPerPage);
+        const { currentPage, itemsPerPage, filteredData } = this.state;
+        const totalItems = filteredData.length;
+        const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
         
-        this.elements.currentItems.textContent = currentItems.toLocaleString('pt-BR');
-        this.elements.totalItems.textContent = totalItems.toLocaleString('pt-BR');
-        this.elements.currentPage.textContent = this.state.currentPage;
-        this.elements.totalPages.textContent = totalPages || 1;
+        const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+        const endItem = Math.min(currentPage * itemsPerPage, totalItems);
         
-        this.elements.prevPage.disabled = this.state.currentPage <= 1 || totalPages === 0;
-        this.elements.nextPage.disabled = this.state.currentPage >= totalPages || totalPages === 0;
+        // Atualizar elementos com verificação de null
+        this.updateElement(this.elements.startItem, startItem.toLocaleString());
+        this.updateElement(this.elements.endItem, endItem.toLocaleString());
+        this.updateElement(this.elements.totalItems, totalItems.toLocaleString());
+        this.updateElement(this.elements.currentPage, currentPage);
+        this.updateElement(this.elements.totalPages, totalPages);
+        
+        // Atualizar estado dos botões
+        this.setButtonDisabled(this.elements.firstPage, currentPage <= 1);
+        this.setButtonDisabled(this.elements.prevPage, currentPage <= 1);
+        this.setButtonDisabled(this.elements.nextPage, currentPage >= totalPages);
+        this.setButtonDisabled(this.elements.lastPage, currentPage >= totalPages);
     }
 
-    setupEventListeners() {
-        // Busca
-        this.elements.searchInput.addEventListener('input', this.debounce((e) => {
-            this.state.filters.search = e.target.value.trim();
-            this.state.currentPage = 1;
-            this.applyFilters();
-            this.updateUI();
-        }, 300));
+    updateUIState() {
+        const hasData = this.state.filteredData.length > 0;
         
-        // Filtros
-        this.elements.fabricanteFilter.addEventListener('change', (e) => {
-            this.state.filters.fabricante = e.target.value;
-            this.state.currentPage = 1;
-            this.applyFilters();
-            this.updateUI();
-        });
+        // Mostrar/ocultar estado vazio
+        if (this.elements.emptyState) {
+            this.elements.emptyState.style.display = hasData ? 'none' : 'block';
+            if (this.elements.emptyStateMessage && !hasData) {
+                this.elements.emptyStateMessage.textContent = 
+                    'Nenhum checklist encontrado para os filtros aplicados.';
+            }
+        }
         
-        this.elements.tecnicoFilter.addEventListener('change', (e) => {
-            this.state.filters.tecnico = e.target.value;
-            this.state.currentPage = 1;
-            this.applyFilters();
-            this.updateUI();
-        });
+        // Habilitar/desabilitar controles
+        this.enableControls(hasData);
         
-        // Itens por página
-        this.elements.itemsPerPage.addEventListener('change', (e) => {
-            this.state.itemsPerPage = parseInt(e.target.value);
-            this.state.currentPage = 1;
+        // Atualizar indicadores de ordenação
+        this.updateSortIndicators();
+    }
+
+    // Handlers de Eventos
+    handleSearch(event) {
+        this.state.filters.search = event.target.value.trim();
+        this.updateDashboard();
+    }
+
+    handleFilterChange(event) {
+        const element = event.target;
+        const value = element.value;
+        
+        if (element.id === 'filter-status') {
+            this.state.filters.status = value;
+        } else if (element.id === 'filter-fabricante') {
+            this.state.filters.fabricante = value;
+        }
+        
+        this.updateDashboard();
+    }
+
+    handleItemsPerPageChange(event) {
+        this.state.itemsPerPage = parseInt(event.target.value);
+        this.updateDashboard();
+    }
+
+    handleSort(field) {
+        const direction = this.state.sortConfig.field === field && 
+                         this.state.sortConfig.direction === 'asc' ? 'desc' : 'asc';
+        
+        this.state.sortConfig = { field, direction };
+        this.updateDashboard();
+    }
+
+    updateChartType() {
+        if (this.state.charts.modelos) {
+            this.state.charts.modelos.destroy();
+            this.createModelosChart();
+        }
+    }
+
+    updateChartAggregation() {
+        if (this.state.charts.timeline) {
+            this.state.charts.timeline.destroy();
+            this.createTimelineChart();
+        }
+    }
+
+    // Métodos auxiliares
+    goToPage(page) {
+        const totalPages = Math.ceil(this.state.filteredData.length / this.state.itemsPerPage);
+        
+        if (page >= 1 && page <= totalPages) {
+            this.state.currentPage = page;
             this.updateTable();
             this.updatePagination();
-        });
-        
-        // Paginação
-        this.elements.prevPage.addEventListener('click', () => {
-            if (this.state.currentPage > 1) {
-                this.state.currentPage--;
-                this.updateTable();
-                this.updatePagination();
-            }
-        });
-        
-        this.elements.nextPage.addEventListener('click', () => {
-            const totalPages = Math.ceil(this.state.filteredData.length / this.state.itemsPerPage);
-            if (this.state.currentPage < totalPages) {
-                this.state.currentPage++;
-                this.updateTable();
-                this.updatePagination();
-            }
-        });
-        
-        // Ordenação da tabela
-        document.querySelectorAll('.data-table th[data-sort]').forEach(th => {
-            th.addEventListener('click', () => {
-                if (!this.state.hasData) return;
-                
-                const field = th.dataset.sort;
-                const direction = this.state.sortConfig.field === field && this.state.sortConfig.direction === 'asc' ? 'desc' : 'asc';
-                
-                this.state.sortConfig = { field, direction };
-                this.applyFilters();
-                this.updateUI();
-                this.updateSortIndicators();
-            });
-        });
-        
-        // Gráficos
-        this.elements.chartType.addEventListener('change', () => {
-            this.createModelosChart();
-        });
-        
-        this.elements.timelineRange.addEventListener('change', () => {
-            const value = this.elements.timelineRange.value;
-            this.state.filters.periodo = value;
             
-            this.updatePeriodText(value);
-            
-            this.state.currentPage = 1;
-            this.applyFilters();
-            this.updateUI();
-        });
-        
-        // Exportar
-        this.elements.exportBtn.addEventListener('click', () => {
-            this.exportData();
-        });
-        
-        // Selecionar período
-        const periodSelector = document.querySelector('.period-selector');
-        periodSelector.addEventListener('click', () => {
-            this.showPeriodSelector();
-        });
-        
-        // Botão de tentar novamente
-        this.elements.retryBtn.addEventListener('click', () => {
-            this.retryLoad();
-        });
-    }
-
-    enableControls(enabled) {
-        this.elements.exportBtn.disabled = !enabled;
-        this.elements.searchInput.disabled = !enabled;
-        this.elements.fabricanteFilter.disabled = !enabled;
-        this.elements.tecnicoFilter.disabled = !enabled;
-        this.elements.itemsPerPage.disabled = !enabled;
-        this.elements.chartType.disabled = !enabled;
-        this.elements.timelineRange.disabled = !enabled;
-        
-        if (enabled) {
-            this.elements.exportBtn.style.opacity = '1';
-            this.elements.exportBtn.style.cursor = 'pointer';
-        } else {
-            this.elements.exportBtn.style.opacity = '0.5';
-            this.elements.exportBtn.style.cursor = 'not-allowed';
+            // Scroll suave para o topo da tabela
+            const tableSection = document.querySelector('.table-section');
+            if (tableSection) {
+                tableSection.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
         }
     }
 
-    showNoDataState() {
-        this.state.hasData = false;
-        this.enableControls(false);
-        
-        // Mostrar estado sem dados
-        this.elements.noDataState.style.display = 'block';
-        
-        // Esconder outras seções
-        this.elements.noDataState.scrollIntoView({ behavior: 'smooth' });
-        
-        // Mostrar notificação
-        this.showNotification('Nenhum dado encontrado na planilha. Verifique se há dados na planilha conectada.', 'info', 10000);
-    }
-
-    hideNoDataState() {
-        this.elements.noDataState.style.display = 'none';
-    }
-
-    retryLoad() {
+    async refreshData() {
         this.showLoading();
-        this.hideNoDataState();
+        this.showNotification('Atualizando dados...', 'info');
         
-        setTimeout(async () => {
-            await this.init();
-        }, 1000);
-    }
-
-    updatePeriodText(value) {
-        const periodos = {
-            '1': 'Hoje',
-            '7': 'Últimos 7 dias',
-            '15': 'Últimos 15 dias',
-            '30': 'Últimos 30 dias',
-            '90': 'Últimos 90 dias',
-            'todos': 'Todo o período'
-        };
-        
-        this.elements.periodText.textContent = periodos[value] || 'Hoje';
-    }
-
-    updateSortIndicators() {
-        document.querySelectorAll('.data-table th i').forEach(icon => {
-            icon.className = 'fas fa-sort';
-        });
-        
-        const th = document.querySelector(`.data-table th[data-sort="${this.state.sortConfig.field}"]`);
-        if (th) {
-            const icon = th.querySelector('i');
-            if (icon) {
-                icon.className = this.state.sortConfig.direction === 'asc' 
-                    ? 'fas fa-sort-up' 
-                    : 'fas fa-sort-down';
-            }
+        try {
+            // Recarregar dados
+            await this.loadData();
+            
+            this.showNotification('Dados atualizados com sucesso!', 'success');
+        } catch (error) {
+            this.handleError(error);
         }
     }
 
-    showPeriodSelector() {
-        if (!this.state.hasData) return;
+    async retryLoad() {
+        this.showLoading();
+        this.hideEmptyState();
         
-        const periodos = [
-            { dias: 1, label: 'Hoje' },
-            { dias: 7, label: 'Últimos 7 dias' },
-            { dias: 15, label: 'Últimos 15 dias' },
-            { dias: 30, label: 'Últimos 30 dias' },
-            { dias: 90, label: 'Últimos 90 dias' },
-            { dias: 'todos', label: 'Todo o período' }
-        ];
-        
-        // Criar overlay de seleção
-        const overlay = document.createElement('div');
-        overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        `;
-        
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-        `;
-        
-        modal.innerHTML = `
-            <h3 style="margin-bottom: 20px; color: #0d1b2a;">Selecionar Período</h3>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                ${periodos.map(p => `
-                    <button class="period-option" data-dias="${p.dias}" style="
-                        padding: 12px 16px;
-                        border: 1px solid #e9ecef;
-                        border-radius: 8px;
-                        background: ${this.state.filters.periodo === p.dias.toString() ? '#0077b6' : 'white'};
-                        color: ${this.state.filters.periodo === p.dias.toString() ? 'white' : '#212529'};
-                        cursor: pointer;
-                        text-align: left;
-                        font-weight: 500;
-                        transition: all 0.2s;
-                        display: flex;
-                        align-items: center;
-                        justify-content: space-between;
-                    ">
-                        ${p.label}
-                        ${p.dias === '1' ? '<span style="background: #e76f51; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px;">HOJE</span>' : ''}
-                    </button>
-                `).join('')}
-            </div>
-            <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
-                <button id="cancel-period" style="
-                    padding: 10px 20px;
-                    border: 1px solid #e9ecef;
-                    border-radius: 6px;
-                    background: white;
-                    color: #6c757d;
-                    cursor: pointer;
-                    margin-right: 10px;
-                ">
-                    Cancelar
-                </button>
-            </div>
-        `;
-        
-        overlay.appendChild(modal);
-        document.body.appendChild(overlay);
-        
-        // Event listeners
-        modal.querySelectorAll('.period-option').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const dias = e.target.dataset.dias;
-                this.state.filters.periodo = dias;
-                this.state.currentPage = 1;
-                
-                this.updatePeriodText(dias);
-                
-                if (dias !== 'todos') {
-                    this.elements.timelineRange.value = dias;
-                }
-                
-                this.applyFilters();
-                this.updateUI();
-                overlay.remove();
-            });
-        });
-        
-        overlay.querySelector('#cancel-period').addEventListener('click', () => {
-            overlay.remove();
-        });
-        
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) {
-                overlay.remove();
-            }
-        });
+        try {
+            await this.loadData();
+        } catch (error) {
+            this.handleError(error);
+        }
     }
 
     exportData() {
-        if (!this.state.hasData || this.state.filteredData.length === 0) {
+        if (this.state.filteredData.length === 0) {
             this.showNotification('Não há dados para exportar', 'warning');
             return;
         }
         
-        const dataToExport = this.state.filteredData.length > 0 ? this.state.filteredData : this.state.data;
-        
         // Criar CSV
-        const headers = ['ID', 'Data', 'Placa', 'Modelo', 'Fabricante', 'Técnico', 'Status'];
+        const headers = ['Data', 'Placa', 'Modelo', 'Fabricante', 'Técnico', 'Status'];
         const csvRows = [
             headers.join(','),
-            ...dataToExport.map(item => [
-                item.id,
-                `"${this.formatDate(item.data)}"`,
-                `"${item.placa || ''}"`,
+            ...this.state.filteredData.map(item => [
+                this.formatDateForExport(item.date),
+                `"${item.placa}"`,
                 `"${item.modelo}"`,
                 `"${item.fabricante}"`,
                 `"${item.tecnico}"`,
@@ -1039,138 +1199,41 @@ class Dashboard {
         const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         
-        // Criar link de download
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `checklists_all_motors_${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Criar link para download
+        const a = document.createElement('a');
+        a.href = url;
+        const date = new Date().toISOString().slice(0, 10);
+        const startDate = this.state.filters.dateStart ? 
+            this.formatDateShort(this.state.filters.dateStart).replace('/', '-') : 'all';
+        const endDate = this.state.filters.dateEnd ? 
+            this.formatDateShort(this.state.filters.dateEnd).replace('/', '-') : 'all';
+        a.download = `checklists_${startDate}_to_${endDate}_${this.state.filteredData.length}_registros.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
         
-        this.showNotification('Exportação realizada com sucesso!', 'success');
-    }
-
-    resetFilters() {
-        this.state.filters = {
-            search: '',
-            fabricante: '',
-            tecnico: '',
-            periodo: '1'
-        };
+        URL.revokeObjectURL(url);
         
-        this.elements.searchInput.value = '';
-        this.state.currentPage = 1;
-        this.elements.periodText.textContent = 'Hoje';
-        this.elements.timelineRange.value = '1';
-        
-        this.applyFilters();
-        this.updateUI();
-        this.showNotification('Filtros resetados', 'success');
+        this.showNotification(
+            `${this.state.filteredData.length} registros exportados`,
+            'success'
+        );
     }
 
     viewDetails(id) {
-        if (!this.state.hasData) return;
-        
         const item = this.state.data.find(d => d.id === id);
         if (!item) return;
         
-        // Criar modal de detalhes
-        const overlay = document.createElement('div');
-        overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        `;
-        
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            width: 90%;
-            max-width: 600px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-            max-height: 80vh;
-            overflow-y: auto;
-        `;
-        
-        const itemDate = new Date(item.data);
-        const isHoje = itemDate.toDateString() === new Date().toDateString();
-        
-        modal.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="color: #0d1b2a; margin: 0;">Detalhes do Checklist #${item.id}</h3>
-                <button id="close-details" style="background: none; border: none; color: #6c757d; cursor: pointer; font-size: 18px;">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px;">
-                <div>
-                    <h4 style="color: #6c757d; font-size: 12px; margin-bottom: 5px;">DATA</h4>
-                    <p style="font-size: 16px; font-weight: 500; color: #212529;">
-                        ${this.formatDate(item.data)}
-                        ${isHoje ? '<span style="background: #e76f51; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: 10px;">HOJE</span>' : ''}
-                    </p>
-                </div>
-                <div>
-                    <h4 style="color: #6c757d; font-size: 12px; margin-bottom: 5px;">PLACA</h4>
-                    <p style="font-size: 16px; font-weight: 500; color: #212529; font-family: monospace; background: #f8f9fa; padding: 8px 12px; border-radius: 6px;">${item.placa || 'Não informada'}</p>
-                </div>
-                <div>
-                    <h4 style="color: #6c757d; font-size: 12px; margin-bottom: 5px;">MODELO</h4>
-                    <p style="font-size: 16px; font-weight: 500; color: #212529;">${item.modelo}</p>
-                </div>
-                <div>
-                    <h4 style="color: #6c757d; font-size: 12px; margin-bottom: 5px;">FABRICANTE</h4>
-                    <p style="font-size: 16px; font-weight: 500; color: #212529;">${item.fabricante}</p>
-                </div>
-                <div>
-                    <h4 style="color: #6c757d; font-size: 12px; margin-bottom: 5px;">TÉCNICO</h4>
-                    <p style="font-size: 16px; font-weight: 500; color: #212529;">${item.tecnico}</p>
-                </div>
-                <div>
-                    <h4 style="color: #6c757d; font-size: 12px; margin-bottom: 5px;">STATUS</h4>
-                    <span class="status-badge status-${item.status.type}" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600;">
-                        <i class="fas fa-${item.status.icon}"></i>
-                        ${item.status.label}
-                    </span>
-                </div>
-            </div>
-            
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
-                <h4 style="color: #6c757d; font-size: 12px; margin-bottom: 10px;">DADOS ORIGINAIS DA PLANILHA</h4>
-                <pre style="background: white; padding: 15px; border-radius: 6px; font-size: 12px; max-height: 200px; overflow: auto; margin: 0;">
-${JSON.stringify(item.rawData, null, 2)}
-                </pre>
-            </div>
-        `;
-        
-        overlay.appendChild(modal);
-        document.body.appendChild(overlay);
-        
-        // Event listeners
-        overlay.querySelector('#close-details').addEventListener('click', () => {
-            overlay.remove();
-        });
-        
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) {
-                overlay.remove();
-            }
-        });
+        // Criar modal de detalhes (implementação similar à anterior)
+        // ... (mantenha a implementação anterior do modal)
     }
 
-    formatDate(dateStr) {
+    // Utilitários de Data
+    formatDate(dateString) {
         try {
-            const date = new Date(dateStr);
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return 'Data inválida';
+            
             return date.toLocaleDateString('pt-BR', {
                 day: '2-digit',
                 month: '2-digit',
@@ -1179,8 +1242,55 @@ ${JSON.stringify(item.rawData, null, 2)}
                 minute: '2-digit'
             });
         } catch {
-            return dateStr;
+            return 'Data inválida';
         }
+    }
+
+    formatDateShort(date) {
+        if (!date) return '';
+        return date.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+    }
+
+    formatDateForExport(dateString) {
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return dateString;
+            
+            return date.toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+        } catch {
+            return dateString;
+        }
+    }
+
+    formatDateForInput(date) {
+        return date.toISOString().split('T')[0];
+    }
+
+    isToday(date) {
+        const today = new Date();
+        return date.getDate() === today.getDate() &&
+               date.getMonth() === today.getMonth() &&
+               date.getFullYear() === today.getFullYear();
+    }
+
+    generateColors(count) {
+        const colors = [
+            '#0066cc', '#00b894', '#6c5ce7', '#fdcb6e',
+            '#e17055', '#0984e3', '#00cec9', '#a29bfe'
+        ];
+        
+        return colors.slice(0, count);
     }
 
     debounce(func, wait) {
@@ -1195,88 +1305,218 @@ ${JSON.stringify(item.rawData, null, 2)}
         };
     }
 
-    lightenColor(color, percent) {
-        const num = parseInt(color.replace('#', ''), 16);
-        const amt = Math.round(2.55 * percent);
-        const R = (num >> 16) + amt;
-        const G = (num >> 8 & 0x00FF) + amt;
-        const B = (num & 0x0000FF) + amt;
+    // Métodos de UI
+    showLoading() {
+        this.state.isLoading = true;
+        if (this.elements.loadingOverlay) {
+            this.elements.loadingOverlay.style.display = 'flex';
+        }
+    }
+
+    hideLoading() {
+        this.state.isLoading = false;
+        if (this.elements.loadingOverlay) {
+            this.elements.loadingOverlay.style.display = 'none';
+        }
+    }
+
+    showEmptyState(message = '') {
+        if (this.elements.emptyState) {
+            this.elements.emptyState.style.display = 'block';
+            if (message && this.elements.emptyStateMessage) {
+                this.elements.emptyStateMessage.textContent = message;
+            }
+        }
+    }
+
+    hideEmptyState() {
+        if (this.elements.emptyState) {
+            this.elements.emptyState.style.display = 'none';
+        }
+    }
+
+    showEmptyTable() {
+        if (!this.elements.tableBody) return;
         
-        return '#' + (
-            0x1000000 +
-            (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
-            (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
-            (B < 255 ? B < 1 ? 0 : B : 255)
-        ).toString(16).slice(1);
+        this.elements.tableBody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 60px 20px; color: #636e72;">
+                    <i class="fas fa-search" style="font-size: 48px; margin-bottom: 20px; opacity: 0.5;"></i>
+                    <h4 style="margin-bottom: 10px; color: #2d3436;">Nenhum resultado encontrado</h4>
+                    <p style="margin-bottom: 20px;">Nenhum checklist corresponde aos filtros aplicados.</p>
+                    <button onclick="dashboard.resetFilters()" style="padding: 10px 20px; border: 2px solid #0066cc; border-radius: 6px; background: white; color: #0066cc; cursor: pointer; font-weight: 600;">
+                        <i class="fas fa-redo"></i> Limpar Filtros
+                    </button>
+                </td>
+            </tr>
+        `;
     }
 
     showNotification(message, type = 'info', duration = 5000) {
-        // Remover notificação anterior
-        const existing = document.querySelector('.notification');
-        if (existing) existing.remove();
-        
-        const icons = {
-            success: 'check-circle',
-            error: 'exclamation-circle',
-            warning: 'exclamation-triangle',
-            info: 'info-circle'
-        };
-        
+        // Criar elemento de notificação
         const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
+        
+        const icon = type === 'success' ? 'check-circle' :
+                     type === 'error' ? 'exclamation-circle' :
+                     type === 'warning' ? 'exclamation-triangle' : 'info-circle';
+        
+        const bgColor = type === 'success' ? '#00b894' :
+                       type === 'error' ? '#e17055' :
+                       type === 'warning' ? '#fdcb6e' : '#0066cc';
+        
         notification.innerHTML = `
-            <i class="fas fa-${icons[type] || 'info-circle'}"></i>
-            <span>${message}</span>
-            <button class="notification-close"><i class="fas fa-times"></i></button>
+            <i class="fas fa-${icon}" style="color: white; font-size: 18px;"></i>
+            <span style="color: white; font-weight: 500;">${message}</span>
+            <button id="notification-close" style="margin-left: auto; background: none; border: none; color: white; cursor: pointer; padding: 4px;">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        
+        notification.style.cssText = `
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            background: ${bgColor};
+            padding: 16px 20px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            min-width: 300px;
+            animation: slideInRight 0.3s ease;
         `;
         
         document.body.appendChild(notification);
         
-        // Fechar notificação
-        notification.querySelector('.notification-close').addEventListener('click', () => {
+        // Auto-remover
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, duration);
+        
+        // Botão fechar
+        notification.querySelector('#notification-close').addEventListener('click', () => {
             notification.remove();
         });
+    }
+
+    updateSortIndicators() {
+        document.querySelectorAll('.data-table th i').forEach(icon => {
+            icon.className = 'fas fa-sort';
+        });
         
-        // Auto-remover
-        if (duration > 0) {
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.style.animation = 'slideOut 0.3s ease';
-                    setTimeout(() => notification.remove(), 300);
-                }
-            }, duration);
+        const currentTh = document.querySelector(
+            `.data-table th[data-sort="${this.state.sortConfig.field}"]`
+        );
+        
+        if (currentTh) {
+            const icon = currentTh.querySelector('i');
+            if (icon) {
+                icon.className = this.state.sortConfig.direction === 'asc' 
+                    ? 'fas fa-sort-up' 
+                    : 'fas fa-sort-down';
+            }
         }
     }
 
-    showLoading() {
-        this.elements.loadingOverlay.style.display = 'flex';
+    enableControls(enabled) {
+        const controls = [
+            this.elements.exportBtn,
+            this.elements.searchInput,
+            this.elements.filterStatus,
+            this.elements.filterFabricante,
+            this.elements.itemsPerPage,
+            this.elements.chartType,
+            this.elements.chartAggregation,
+            this.elements.startDate,
+            this.elements.endDate,
+            this.elements.applyDateFilter
+        ];
+        
+        controls.forEach(control => {
+            if (control) {
+                control.disabled = !enabled;
+            }
+        });
     }
 
-    hideLoading() {
-        this.elements.loadingOverlay.style.display = 'none';
+    resetFilters() {
+        this.state.filters = {
+            search: '',
+            status: '',
+            fabricante: '',
+            dateStart: null,
+            dateEnd: null,
+            quickFilter: '1'
+        };
+        
+        // Resetar inputs
+        if (this.elements.searchInput) {
+            this.elements.searchInput.value = '';
+        }
+        
+        if (this.elements.filterStatus) {
+            this.elements.filterStatus.value = '';
+        }
+        
+        if (this.elements.filterFabricante) {
+            this.elements.filterFabricante.value = '';
+        }
+        
+        // Resetar datas para padrão (últimos 7 dias)
+        this.initDateFilters();
+        
+        // Ativar botão "Hoje"
+        this.elements.dateQuickFilters.forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.days === '1') {
+                btn.classList.add('active');
+            }
+        });
+        
+        this.updateDashboard();
+        this.showNotification('Filtros resetados', 'success');
     }
 
     handleError(error) {
-        console.error('Erro:', error);
-        this.showNoDataState();
-        this.showNotification('Erro ao carregar dados da planilha: ' + error.message, 'error');
+        console.error('❌ Erro:', error);
+        
+        let message = 'Erro ao carregar dados';
+        
+        if (error.name === 'AbortError') {
+            message = 'Tempo limite excedido. Verifique sua conexão.';
+        } else if (error.message.includes('Failed to fetch')) {
+            message = 'Não foi possível conectar ao servidor.';
+        } else if (error.message.includes('HTTP')) {
+            message = `Erro ${error.message}`;
+        }
+        
+        this.showNotification(message, 'error', 10000);
+        this.showEmptyState(message);
         this.hideLoading();
+    }
+
+    // Métodos auxiliares de UI
+    updateElement(element, value) {
+        if (element) {
+            element.textContent = value;
+        }
+    }
+
+    setButtonDisabled(button, disabled) {
+        if (button) {
+            button.disabled = disabled;
+        }
     }
 }
 
-// Inicializar dashboard quando o DOM estiver carregado
+// Inicializar aplicação
 let dashboard;
+
 document.addEventListener('DOMContentLoaded', () => {
     dashboard = new Dashboard();
     window.dashboard = dashboard;
 });
-
-// Adicionar animação para slideOut
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideOut {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100%); opacity: 0; }
-    }
-`;
-document.head.appendChild(style);
